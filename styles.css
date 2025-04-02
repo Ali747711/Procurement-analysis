@@ -271,3 +271,247 @@ canvas {
     margin-top: 10px;
     font-size: 0.9rem;
 }
+
+
+/* Theme variables for light/dark mode */
+:root {
+    /* Keep your existing variables here */
+}
+
+/* Dark Theme Variables - Add this */
+[data-theme="dark"] {
+    --primary-color: #3a4cd3;
+    --secondary-color: #282f8b;
+    --accent-color: #3a78de;
+    --bg-color: #1f2128;
+    --text-color: #e6e8f0;
+    --card-bg: #2a2d39;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Add transition to elements for smooth theme switching */
+* {
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+/* Supplier and Metrics Control Styles - Add this */
+.controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    background-color: var(--card-bg);
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.supplier-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.supplier-selector label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.supplier-selector select {
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-width: 180px;
+    box-shadow: var(--shadow);
+}
+
+.metrics-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.metrics-selector label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.metrics-selector select {
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-width: 200px;
+    max-width: 100%;
+    height: 120px;
+    box-shadow: var(--shadow);
+}
+
+.apply-button {
+    padding: 8px 15px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.apply-button:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+}
+
+/* Theme Toggle Styles - Add this */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+}
+
+#theme-toggle-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--card-bg);
+    color: var(--accent-color);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+#theme-toggle-btn:hover {
+    transform: rotate(10deg);
+}
+
+#theme-toggle-btn .fa-sun {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#theme-toggle-btn .fa-moon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+#theme-toggle-btn.light-mode .fa-sun {
+    opacity: 1;
+}
+
+#theme-toggle-btn.light-mode .fa-moon {
+    opacity: 0;
+}
+
+/* Supplier Info - Add this */
+.supplier-info {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.5s ease;
+}
+
+/* Cursor follower styles - Add this */
+.cursor-follower {
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent-color);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s, border-color 0.3s, opacity 0.3s;
+    z-index: 9999;
+    opacity: 0.6;
+    mix-blend-mode: difference;
+}
+
+.cursor-follower::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: background-color 0.3s;
+}
+
+.cursor-hover {
+    width: 50px;
+    height: 50px;
+    border-color: var(--primary-color);
+    opacity: 0.3;
+}
+
+/* Animation for metrics applied message */
+.metrics-applied-message {
+    animation: fadeInOut 3s ease forwards;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Additional responsive styles - Add this */
+@media (max-width: 992px) {
+    .controls-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .supplier-selector, .metrics-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .supplier-selector select, .metrics-selector select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .metrics-selector select {
+        height: 150px;
+    }
+    
+    .cursor-follower {
+        display: none; /* Hide on mobile */
+    }
+}
