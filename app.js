@@ -2013,3 +2013,1049 @@ function calculateCorrelation(x, y) {
     
     return numerator / Math.sqrt(xDenominator * yDenominator);
 }
+
+// Custom color scheme - Darker theme
+document.documentElement.style.setProperty('--primary-color', '#3a4cd3');
+document.documentElement.style.setProperty('--secondary-color', '#282f8b');
+document.documentElement.style.setProperty('--accent-color', '#3a78de');
+document.documentElement.style.setProperty('--bg-color', '#1f2128');
+document.documentElement.style.setProperty('--text-color', '#e6e8f0');
+document.documentElement.style.setProperty('--card-bg', '#2a2d39');
+document.documentElement.style.setProperty('--shadow', '0 4px 6px rgba(0, 0, 0, 0.3)');
+
+// Add animated background
+function setupAnimatedBackground() {
+    const header = document.querySelector('header');
+    const canvas = document.createElement('canvas');
+    canvas.id = 'background-animation';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.zIndex = '-1';
+    document.body.appendChild(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    function Particle(x, y, size, speed, color) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.speed = speed;
+        this.color = color;
+        this.direction = Math.random() * Math.PI * 2;
+        
+        this.update = function() {
+            this.x += Math.cos(this.direction) * this.speed;
+            this.y += Math.sin(this.direction) * this.speed;
+            
+            if (this.x < 0 || this.x > canvas.width) {
+                this.direction = Math.PI - this.direction;
+            }
+            if (this.y < 0 || this.y > canvas.height) {
+                this.direction = -this.direction;
+            }
+        };
+        
+        this.draw = function() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        };
+    }
+    
+    function createParticles() {
+        particles = [];
+        const particleCount = Math.min(50, Math.floor(window.innerWidth / 20));
+        
+        for (let i = 0; i < particleCount; i++) {
+            const size = Math.random() * 2 + 1;
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const speed = Math.random() * 0.5 + 0.1;
+            const color = `rgba(255, 255, 255, ${Math.random() * 0.2 + 0.1})`;
+            
+            particles.push(new Particle(x, y, size, speed, color));
+        }
+    }
+    
+    function connectParticles() {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 150) {
+                    const opacity = 1 - (distance / 150);
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.15})`;
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(particle => {
+            particle.update();
+            particle.draw();
+        });
+        
+        connectParticles();
+        
+        requestAnimationFrame(animate);
+    }
+    
+    createParticles();
+    animate();
+}
+
+// Add home button and update header with your info
+function addHeaderElements() {
+    const header = document.querySelector('header');
+    const studentInfo = document.createElement('p');
+    studentInfo.className = 'student-info';
+    studentInfo.innerHTML = 'Created by: Nabiev Azamat | Student ID: 2217423';
+    studentInfo.style.fontSize = '0.9rem';
+    studentInfo.style.marginTop = '5px';
+    header.appendChild(studentInfo);
+    
+    // Create home button
+    const homeBtn = document.createElement('button');
+    homeBtn.id = 'home-btn';
+    homeBtn.className = 'export-btn';
+    homeBtn.innerHTML = '<i class="fas fa-home"></i> Home';
+    homeBtn.style.position = 'absolute';
+    homeBtn.style.top = '20px';
+    homeBtn.style.left = '20px';
+    document.body.appendChild(homeBtn);
+    
+    // Add event listener to home button
+    homeBtn.addEventListener('click', () => {
+        // Hide analytics section and show upload section
+        analyticsSection.style.display = 'none';
+        document.querySelector('.upload-section').scrollIntoView({ behavior: 'smooth' });
+    });
+}
+
+// Add footer
+function addFooter() {
+    const footer = document.createElement('footer');
+    footer.innerHTML = `
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Procurement Lead Time Analysis Tool</h3>
+                <p>A comprehensive tool for analyzing procurement data and gaining valuable insights.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Features</h3>
+                <ul>
+                    <li>Lead Time Analysis</li>
+                    <li>Supplier Performance</li>
+                    <li>Transportation Mode Efficiency</li>
+                    <li>Disruption Impact</li>
+                    <li>Predictive Analytics</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Created By</h3>
+                <p>Nabiev Azamat</p>
+                <p>Student ID: 2217423</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; ${new Date().getFullYear()} Procurement Analysis Tool. All Rights Reserved.</p>
+        </div>
+    `;
+    
+    const footerStyle = document.createElement('style');
+    footerStyle.textContent = `
+        footer {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            padding: 30px 0;
+            margin-top: 50px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .footer-section {
+            flex: 1;
+            margin: 10px;
+            min-width: 250px;
+        }
+        
+        .footer-section h3 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+            position: relative;
+            padding-bottom: 8px;
+        }
+        
+        .footer-section h3:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 40px;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+        
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .footer-section ul li {
+            margin-bottom: 8px;
+            position: relative;
+            padding-left: 15px;
+        }
+        
+        .footer-section ul li:before {
+            content: '›';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 20px;
+            margin-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    `;
+    
+    document.head.appendChild(footerStyle);
+    document.body.appendChild(footer);
+}
+
+// Enhance key metrics display with icons
+function displayKeyMetrics() {
+    const metrics = processedData.keyMetrics;
+    keyMetricsContainer.innerHTML = '';
+    
+    // Define metrics with icons
+    const metricsData = [
+        { title: 'Average Lead Time', value: `${metrics.avgLeadTime} days`, icon: 'fa-clock' },
+        { title: 'On-Time Delivery', value: metrics.onTimePercentage, icon: 'fa-check-circle' },
+        { title: 'Average Delay', value: `${metrics.avgDelay} days`, icon: 'fa-exclamation-triangle' },
+        { title: 'Best Supplier', value: `${metrics.lowestSupplier} (${metrics.lowestLeadTime} days)`, icon: 'fa-award' },
+        { title: 'Most Consistent Supplier', value: metrics.mostConsistentSupplier, icon: 'fa-balance-scale' },
+        { title: 'Fastest Transportation', value: `${metrics.fastestMode} (${metrics.fastestTime} days)`, icon: 'fa-truck-loading' }
+    ];
+    
+    // Add disruption if available
+    if (metrics.worstDisruption) {
+        metricsData.push({ 
+            title: 'Most Impactful Disruption', 
+            value: metrics.worstDisruption, 
+            icon: 'fa-bolt' 
+        });
+    }
+    
+    // Add best product category
+    metricsData.push({ 
+        title: 'Best Product Category', 
+        value: `${metrics.shortestCategory} (${metrics.shortestTime} days)`, 
+        icon: 'fa-box' 
+    });
+    
+    // Add correlation if available
+    if (processedData.correlationData && processedData.correlationData.quantityLeadTime) {
+        const correlation = processedData.correlationData.quantityLeadTime.correlation;
+        let correlationDesc = 'No correlation';
+        
+        if (correlation > 0.7) correlationDesc = 'Strong positive';
+        else if (correlation > 0.4) correlationDesc = 'Moderate positive';
+        else if (correlation > 0.1) correlationDesc = 'Weak positive';
+        else if (correlation < -0.7) correlationDesc = 'Strong negative';
+        else if (correlation < -0.4) correlationDesc = 'Moderate negative';
+        else if (correlation < -0.1) correlationDesc = 'Weak negative';
+        
+        metricsData.push({ 
+            title: 'Order Quantity & Lead Time', 
+            value: `${correlationDesc} (${correlation.toFixed(2)})`, 
+            icon: 'fa-chart-line' 
+        });
+    }
+    
+    // Create metric cards with icons
+    metricsData.forEach(metric => {
+        createMetricCardWithIcon(metric.title, metric.value, metric.icon);
+    });
+}
+
+// Create enhanced metric card with icon
+function createMetricCardWithIcon(title, value, iconClass) {
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    
+    const iconElement = document.createElement('div');
+    iconElement.className = 'metric-icon';
+    iconElement.innerHTML = `<i class="fas ${iconClass}"></i>`;
+    
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'metric-content';
+    
+    const titleElement = document.createElement('div');
+    titleElement.className = 'metric-title';
+    titleElement.textContent = title;
+    
+    const valueElement = document.createElement('div');
+    valueElement.className = 'metric-value';
+    valueElement.textContent = value;
+    
+    contentWrapper.appendChild(titleElement);
+    contentWrapper.appendChild(valueElement);
+    
+    card.appendChild(iconElement);
+    card.appendChild(contentWrapper);
+    
+    keyMetricsContainer.appendChild(card);
+    
+    // Add styles for the new card layout
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        .metric-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            text-align: left;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .metric-icon {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(72, 149, 239, 0.1);
+            border-radius: 50%;
+            padding: 10px;
+        }
+        
+        .metric-content {
+            flex: 1;
+        }
+        
+        .metric-title {
+            font-size: 1rem;
+            color: var(--text-color);
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+    `;
+    
+    document.head.appendChild(styleElement);
+}
+
+// Add comprehensive forecasting section
+function addForecastingSection() {
+    // Create forecasting section
+    const forecastSection = document.createElement('div');
+    forecastSection.className = 'forecast-section';
+    forecastSection.innerHTML = `
+        <h2>Comprehensive Forecast Analysis</h2>
+        <p>Predictive analytics based on historical data patterns</p>
+        
+        <div class="forecast-metrics">
+            <div class="forecast-card" id="lead-time-forecast">
+                <h3>Lead Time Forecast</h3>
+                <div class="forecast-chart-container">
+                    <canvas id="lead-time-forecast-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="forecast-card" id="supplier-performance-forecast">
+                <h3>Supplier Performance Forecast</h3>
+                <div class="forecast-chart-container">
+                    <canvas id="supplier-forecast-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="forecast-card" id="on-time-delivery-forecast">
+                <h3>On-Time Delivery Forecast</h3>
+                <div class="forecast-chart-container">
+                    <canvas id="delivery-forecast-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add style for forecast section
+    const forecastStyle = document.createElement('style');
+    forecastStyle.textContent = `
+        .forecast-section {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin: 40px 0;
+        }
+        
+        .forecast-section h2 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        
+        .forecast-section p {
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        
+        .forecast-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .forecast-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .forecast-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+            text-align: center;
+        }
+        
+        .forecast-chart-container {
+            height: 300px;
+        }
+    `;
+    
+    document.head.appendChild(forecastStyle);
+    
+    // Insert before footer
+    const footer = document.querySelector('footer') || document.body;
+    document.body.insertBefore(forecastSection, footer);
+    
+    // Function to generate forecasts
+    return forecastSection;
+}
+
+// Create forecast charts
+function createForecastCharts() {
+    // Lead Time Forecast
+    const leadTimeCtx = document.getElementById('lead-time-forecast-chart').getContext('2d');
+    const trendsData = processedData.trendsData;
+    
+    if (trendsData.months.length < 3) {
+        document.getElementById('lead-time-forecast').innerHTML = 
+            '<h3>Lead Time Forecast</h3><div class="no-data-message">Need at least 3 months of data for forecasting</div>';
+        return;
+    }
+    
+    // Get historical data
+    const months = trendsData.months.slice(-6);
+    const leadTimes = trendsData.avgLeadTimes.slice(-6);
+    
+    // Simple linear regression for forecasting
+    const xValues = Array.from({ length: months.length }, (_, i) => i);
+    const yValues = leadTimes;
+    
+    // Calculate slope and intercept
+    const n = xValues.length;
+    const sumX = xValues.reduce((a, b) => a + b, 0);
+    const sumY = yValues.reduce((a, b) => a + b, 0);
+    const sumXY = xValues.reduce((a, b, i) => a + b * yValues[i], 0);
+    const sumXX = xValues.reduce((a, b) => a + b * b, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    // Predict next 6 months
+    const futureMonths = [];
+    const predictedLeadTimes = [];
+    
+    for (let i = 1; i <= 6; i++) {
+        const lastDate = new Date(months[months.length - 1]);
+        const nextMonth = new Date(lastDate);
+        nextMonth.setMonth(nextMonth.getMonth() + i);
+        futureMonths.push(`${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`);
+        
+        const nextX = xValues[xValues.length - 1] + i;
+        const predictedY = slope * nextX + intercept;
+        predictedLeadTimes.push(predictedY);
+    }
+    
+    // Format all months for display
+    const allMonthsFormatted = [...months, ...futureMonths].map(month => {
+        const parts = month.split('-');
+        const date = new Date(parts[0], parts[1] - 1, 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+    
+    // Create chart
+    charts.leadTimeForecast = new Chart(leadTimeCtx, {
+        type: 'line',
+        data: {
+            labels: allMonthsFormatted,
+            datasets: [
+                {
+                    label: 'Historical Lead Time',
+                    data: leadTimes,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true
+                },
+                {
+                    label: 'Forecasted Lead Time',
+                    data: [...Array(months.length - 1).fill(null), leadTimes[leadTimes.length - 1], ...predictedLeadTimes],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderDash: [5, 5],
+                    pointStyle: 'circle',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const idx = context[0].dataIndex;
+                            const datasetIdx = context[0].datasetIndex;
+                            
+                            if (datasetIdx === 1 && idx >= months.length - 1) {
+                                const isPrediction = idx >= months.length;
+                                return isPrediction 
+                                    ? `Forecast: ${allMonthsFormatted[idx]}`
+                                    : allMonthsFormatted[idx];
+                            }
+                            
+                            return allMonthsFormatted[idx];
+                        },
+                        label: function(context) {
+                            return `Lead Time: ${context.raw.toFixed(1)} days`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Lead Time (days)',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Create Supplier Performance Forecast
+    createSupplierForecast();
+    
+    // Create On-Time Delivery Forecast
+    createDeliveryForecast(slope, intercept);
+}
+
+// Create supplier performance forecast
+function createSupplierForecast() {
+    const ctx = document.getElementById('supplier-forecast-chart').getContext('2d');
+    const supplierData = processedData.supplierData;
+    const suppliers = Object.keys(supplierData).slice(0, 5); // Top 5 suppliers
+    
+    if (suppliers.length === 0) {
+        document.getElementById('supplier-performance-forecast').innerHTML = 
+            '<h3>Supplier Performance Forecast</h3><div class="no-data-message">No supplier data available</div>';
+        return;
+    }
+    
+    // Calculate current and forecasted performance (simulated improvement)
+    const currentPerformance = suppliers.map(supplier => 100 - (supplierData[supplier].delayFrequency * 100));
+    const forecastedPerformance = currentPerformance.map(perf => {
+        // Simulate performance improvement (capped at 98%)
+        const improvement = Math.random() * 5 + 2; // 2-7% improvement
+        return Math.min(98, perf + improvement);
+    });
+    
+    // Create chart
+    charts.supplierForecast = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: suppliers,
+            datasets: [
+                {
+                    label: 'Current Performance (%)',
+                    data: currentPerformance,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(75, 192, 192, 1)'
+                },
+                {
+                    label: 'Forecasted Performance (%)',
+                    data: forecastedPerformance,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(255, 99, 132, 1)'
+                }
+            ]
+        },
+        options: {
+            elements: {
+                line: {
+                    borderWidth: 3
+                }
+            },
+            scales: {
+                r: {
+                    angleLines: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    pointLabels: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    ticks: {
+                        backdropColor: 'transparent',
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Create on-time delivery forecast
+function createDeliveryForecast(leadTimeSlope, leadTimeIntercept) {
+    const ctx = document.getElementById('delivery-forecast-chart').getContext('2d');
+    const trendsData = processedData.trendsData;
+    
+    if (trendsData.months.length < 3) {
+        document.getElementById('on-time-delivery-forecast').innerHTML = 
+            '<h3>On-Time Delivery Forecast</h3><div class="no-data-message">Need at least 3 months of data for forecasting</div>';
+        return;
+    }
+    
+    // Get historical data
+    const months = trendsData.months.slice(-6);
+    const onTimeRates = trendsData.months.slice(-6).map((month, i) => {
+        return 100 - trendsData.delayPercentages[trendsData.months.indexOf(month)];
+    });
+    
+    // Forecasting based on lead time slope (inverse relationship)
+    const futureMonths = [];
+    const predictedOnTimeRates = [];
+    
+    for (let i = 1; i <= 6; i++) {
+        const lastDate = new Date(months[months.length - 1]);
+        const nextMonth = new Date(lastDate);
+        nextMonth.setMonth(nextMonth.getMonth() + i);
+        futureMonths.push(`${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`);
+        
+        // Negative correlation with lead time
+        const currentRate = onTimeRates[onTimeRates.length - 1];
+        // If lead time decreasing (negative slope), on-time rate increases
+        const rateChange = -leadTimeSlope * 5; // Inverse relationship
+        let predictedRate = currentRate + (rateChange * i);
+        
+        // Cap between 0-100%
+        predictedRate = Math.min(100, Math.max(0, predictedRate));
+        predictedOnTimeRates.push(predictedRate);
+    }
+    
+    // Format all months for display
+    const allMonthsFormatted = [...months, ...futureMonths].map(month => {
+        const parts = month.split('-');
+        const date = new Date(parts[0], parts[1] - 1, 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+    
+    // Create chart
+    charts.deliveryForecast = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allMonthsFormatted,
+            datasets: [
+                {
+                    label: 'Historical On-Time Rate (%)',
+                    data: onTimeRates,
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    fill: true
+                },
+                {
+                    label: 'Forecasted On-Time Rate (%)',
+                    data: [...Array(months.length - 1).fill(null), onTimeRates[onTimeRates.length - 1], ...predictedOnTimeRates],
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderDash: [5, 5],
+                    pointStyle: 'circle',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const idx = context[0].dataIndex;
+                            const datasetIdx = context[0].datasetIndex;
+                            
+                            if (datasetIdx === 1 && idx >= months.length - 1) {
+                                const isPrediction = idx >= months.length;
+                                return isPrediction 
+                                    ? `Forecast: ${allMonthsFormatted[idx]}`
+                                    : allMonthsFormatted[idx];
+                            }
+                            
+                            return allMonthsFormatted[idx];
+                        },
+                        label: function(context) {
+                            return `On-Time Rate: ${context.raw.toFixed(1)}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'On-Time Delivery Rate (%)',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Fix company dropdown functionality
+function enhanceCompanyDropdown() {
+    // Add event listener to monitor parsed data
+    document.addEventListener('dataLoaded', function() {
+        // Extract unique companies from the data
+        const companyField = findCompanyField(rawData[0]);
+        
+        if (companyField) {
+            companies = [...new Set(rawData.map(row => row[companyField]))].filter(Boolean);
+            populateCompanyDropdown();
+            
+            // Display company count
+            if (companies.length > 0) {
+                const companyCount = document.createElement('div');
+                companyCount.className = 'company-count';
+                companyCount.textContent = `${companies.length} companies detected`;
+                companyCount.style.marginTop = '10px';
+                companyCount.style.fontSize = '0.9rem';
+                companyCount.style.color = 'var(--accent-color)';
+                companySelector.appendChild(companyCount);
+            }
+        }
+    });
+}
+
+// Find the company field name in the data
+function findCompanyField(row) {
+    if (!row) return null;
+    
+    // Look for common company field names
+    const possibleFields = ['Company', 'company', 'Company_Name', 'CompanyName', 'Organization', 'Org', 'Business'];
+    
+    for (const field of possibleFields) {
+        if (row[field] !== undefined) return field;
+    }
+    
+    // If no standard field found, look for any field with "company" in it
+    const companyField = Object.keys(row).find(key => 
+        key.toLowerCase().includes('company') || 
+        key.toLowerCase().includes('organization') ||
+        key.toLowerCase().includes('business')
+    );
+    
+    return companyField || null;
+}
+
+// Enhance the data processing to extract more insights
+function enhanceDataProcessing() {
+    // Add event listeners for the data processing flow
+    document.addEventListener('dataProcessed', function() {
+        // Add data quality metrics
+        addDataQualityMetrics();
+        
+        // Update UI based on data quality
+        updateUIBasedOnDataQuality();
+    });
+}
+
+// Add data quality metrics
+function addDataQualityMetrics() {
+    if (!processedData || !rawData || rawData.length === 0) return;
+    
+    // Calculate data completeness
+    const requiredFields = [
+        'Order_Date', 'Expected_Delivery_Date', 'Actual_Delivery_Date', 
+        'Supplier', 'Product_Category', 'Transportation_Mode'
+    ];
+    
+    let totalFields = 0;
+    let completeFields = 0;
+    
+    rawData.forEach(row => {
+        requiredFields.forEach(field => {
+            if (row[field] !== undefined && row[field] !== null && row[field] !== '') {
+                completeFields++;
+            }
+            totalFields++;
+        });
+    });
+    
+    const completenessRate = (completeFields / totalFields) * 100;
+    
+    // Add data quality section
+    if (!processedData.dataQuality) {
+        processedData.dataQuality = {};
+    }
+    
+    processedData.dataQuality.completenessRate = completenessRate;
+    processedData.dataQuality.rowCount = rawData.length;
+    processedData.dataQuality.validRowCount = rawData.filter(row => 
+        row.Order_Date && row.Actual_Delivery_Date
+    ).length;
+}
+
+// Update UI based on data quality
+function updateUIBasedOnDataQuality() {
+    if (!processedData.dataQuality) return;
+    
+    const quality = processedData.dataQuality;
+    
+    // Add data quality indicator
+    const qualityIndicator = document.createElement('div');
+    qualityIndicator.className = 'data-quality-indicator';
+    
+    let qualityLevel = 'high';
+    let qualityColor = '#4CAF50';
+    
+    if (quality.completenessRate < 80) {
+        qualityLevel = 'medium';
+        qualityColor = '#FFC107';
+    }
+    
+    if (quality.completenessRate < 60) {
+        qualityLevel = 'low';
+        qualityColor = '#F44336';
+    }
+    
+    qualityIndicator.innerHTML = `
+        <div class="quality-badge" style="background-color: ${qualityColor}">
+            ${qualityLevel.toUpperCase()} QUALITY
+        </div>
+        <div class="quality-info">
+            <div>Data Completeness: ${quality.completenessRate.toFixed(1)}%</div>
+            <div>Total Rows: ${quality.rowCount}</div>
+            <div>Valid Rows: ${quality.validRowCount}</div>
+        </div>
+    `;
+    
+    // Add styles
+    const qualityStyle = document.createElement('style');
+    qualityStyle.textContent = `
+        .data-quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .quality-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        
+        .quality-info {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    `;
+    
+    document.head.appendChild(qualityStyle);
+    
+    // Add to analytics section
+    const insertPoint = document.querySelector('.insights-summary');
+    if (insertPoint) {
+        insertPoint.appendChild(qualityIndicator);
+    }
+}
+
+// Initialize all enhancements
+function initEnhancements() {
+    // Setup dark theme and animated background after DOM content loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Apply dark theme
+        document.documentElement.style.setProperty('--primary-color', '#3a4cd3');
+        document.documentElement.style.setProperty('--secondary-color', '#282f8b');
+        document.documentElement.style.setProperty('--accent-color', '#3a78de');
+        document.documentElement.style.setProperty('--bg-color', '#1f2128');
+        document.documentElement.style.setProperty('--text-color', '#e6e8f0');
+        document.documentElement.style.setProperty('--card-bg', '#2a2d39');
+        document.documentElement.style.setProperty('--shadow', '0 4px 6px rgba(0, 0, 0, 0.3)');
+        
+        // Add animated background
+        setupAnimatedBackground();
+        
+        // Add header elements (name & student ID)
+        addHeaderElements();
+        
+        // Add footer
+        addFooter();
+        
+        // Enhance company dropdown
+        enhanceCompanyDropdown();
+        
+        // Enhance data processing
+        enhanceDataProcessing();
+        
+        // Update event handlers
+        updateEventHandlers();
+    });
+}
+
+// Update event handlers
+function updateEventHandlers() {
+    // Override showAnalytics function
+    const originalShowAnalytics = showAnalytics;
+    showAnalytics = function() {
+        originalShowAnalytics();
+        
+        // Create forecasting section
+        const forecastSection = addForecastingSection();
+        
+        // Create forecast charts
+        createForecastCharts();
+        
+        // Dispatch event when data is processed
+        document.dispatchEvent(new Event('dataProcessed'));
+    };
+    
+    // Override handle file upload
+    const originalHandleFileUpload = handleFileUpload;
+    handleFileUpload = function(e) {
+        originalHandleFileUpload(e);
+        
+        // Dispatch event when data is loaded
+        document.dispatchEvent(new Event('dataLoaded'));
+    };
+    
+    // Override load demo data
+    const originalLoadDemoData = loadDemoData;
+    loadDemoData = function() {
+        originalLoadDemoData();
+        
+        // Dispatch event when data is loaded
+        document.dispatchEvent(new Event('dataLoaded'));
+    };
+}
+
+// Call the initialization function
+initEnhancements();
+
+// Additional chart customization for dark theme
+Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
+Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
