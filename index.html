@@ -292,6 +292,10 @@
             </div>
             <div id="file-name"></div>
             
+            <button id="demo-data-btn" class="export-btn" style="margin-top: 15px;">
+                <i class="fas fa-play"></i> Load Demo Data
+            </button>
+            
             <div class="company-selector" id="company-selector">
                 <label for="company-select">Select Company:</label>
                 <select id="company-select">
@@ -363,6 +367,65 @@
     </div>
 
     <script>
+        // Add some sample data for demonstration purposes
+        const sampleData = [
+            {
+                Company: "CompanyA",
+                Supplier: "Supplier1",
+                TransportationMode: "Air",
+                ProductCategory: "Electronics",
+                OrderQuantity: 500,
+                LeadTimeDays: 12,
+                ExpectedLeadTimeDays: 10,
+                OrderDate: "2023-01-15",
+                DisruptionType: "Weather"
+            },
+            {
+                Company: "CompanyA",
+                Supplier: "Supplier2",
+                TransportationMode: "Sea",
+                ProductCategory: "Raw Materials",
+                OrderQuantity: 1500,
+                LeadTimeDays: 35,
+                ExpectedLeadTimeDays: 30,
+                OrderDate: "2023-01-20",
+                DisruptionType: "Port Congestion"
+            },
+            {
+                Company: "CompanyA",
+                Supplier: "Supplier3",
+                TransportationMode: "Rail",
+                ProductCategory: "Chemicals",
+                OrderQuantity: 800,
+                LeadTimeDays: 18,
+                ExpectedLeadTimeDays: 20,
+                OrderDate: "2023-02-05",
+                DisruptionType: "None"
+            },
+            {
+                Company: "CompanyB",
+                Supplier: "Supplier1",
+                TransportationMode: "Air",
+                ProductCategory: "Electronics",
+                OrderQuantity: 300,
+                LeadTimeDays: 10,
+                ExpectedLeadTimeDays: 10,
+                OrderDate: "2023-01-10",
+                DisruptionType: "None"
+            },
+            {
+                Company: "CompanyB",
+                Supplier: "Supplier4",
+                TransportationMode: "Truck",
+                ProductCategory: "Furniture",
+                OrderQuantity: 200,
+                LeadTimeDays: 8,
+                ExpectedLeadTimeDays: 7,
+                OrderDate: "2023-02-15",
+                DisruptionType: "None"
+            }
+        ];
+        
         // Global variables to store data and charts
         let rawData = [];
         let processedData = {};
@@ -385,11 +448,18 @@
         companySelect.addEventListener('change', updateAnalytics);
         document.getElementById('export-image').addEventListener('click', exportAsImage);
         document.getElementById('export-csv').addEventListener('click', exportAnalysisCSV);
+        document.getElementById('demo-data-btn').addEventListener('click', loadDemoData);
         
         // Handle file upload
         function handleFileUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
+            
+            // Check file type
+            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                alert('Please upload a CSV file. The file you selected is not a CSV.');
+                return;
+            }
             
             fileNameDisplay.textContent = `Selected file: ${file.name}`;
             loader.style.display = 'block';
@@ -398,13 +468,27 @@
             Papa.parse(file, {
                 header: true,
                 dynamicTyping: true,
+                skipEmptyLines: true,
                 complete: function(results) {
                     console.log('Parsed data:', results);
+                    
+                    // Handle errors in parsing
+                    if (results.errors && results.errors.length > 0) {
+                        console.warn('CSV parsing had errors:', results.errors);
+                        if (results.errors.length > 5) {
+                            alert(`Warning: Found ${results.errors.length} errors while parsing the CSV. Data may be incomplete.`);
+                        }
+                    }
+                    
                     rawData = results.data.filter(row => 
-                        row.Company && row.Supplier && row.LeadTimeDays !== undefined);
+                        row && 
+                        typeof row === 'object' && 
+                        row.Company && 
+                        row.Supplier && 
+                        row.LeadTimeDays !== undefined);
                     
                     if (rawData.length === 0) {
-                        alert('No valid data found in the CSV file.');
+                        alert('No valid data found in the CSV file. Please ensure your CSV has the required columns: Company, Supplier, and LeadTimeDays.');
                         loader.style.display = 'none';
                         return;
                     }
@@ -450,11 +534,15 @@
         // Process data for analysis
         function processData() {
             const selectedCompany = companySelect.value;
-            let filteredData = rawData;
+            let filteredData = rawData.filter(row => 
+                row && 
+                typeof row === 'object' && 
+                row.LeadTimeDays !== undefined && 
+                row.LeadTimeDays !== null);
             
             // Filter by selected company if not "all"
             if (selectedCompany !== 'all') {
-                filteredData = rawData.filter(row => row.Company === selectedCompany);
+                filteredData = filteredData.filter(row => row.Company === selectedCompany);
             }
             
             // Process supplier data
@@ -831,9 +919,14 @@
             });
             
             // Process data and update visualizations
-            processData();
-            displayKeyMetrics();
-            createCharts();
+            try {
+                processData();
+                displayKeyMetrics();
+                createCharts();
+            } catch (error) {
+                console.error('Error updating analytics:', error);
+                alert('An error occurred while updating the visualizations. Please check the console for details.');
+            }
             
             // Show/hide benchmark section
             if (companySelect.value !== 'all' && companies.length > 1) {
@@ -848,7 +941,666 @@
             const metrics = processedData.keyMetrics;
             keyMetricsContainer.innerHTML = '';
             
-            // Create metric cards
+            // Create metric card
+        function createMetricCard(title, value) {
+            const card = document.createElement('div');
+            card.className = 'metric-card';
+            
+            const titleElement = document.createElement('div');
+            titleElement.className = 'metric-title';
+            titleElement.textContent = title;
+            
+            const valueElement = document.createElement('div');
+            valueElement.className = 'metric-value';
+            valueElement.textContent = value;
+            
+            card.appendChild(titleElement);
+            card.appendChild(valueElement);
+            keyMetricsContainer.appendChild(card);
+        }
+        
+        // Create charts
+        function createCharts() {
+            createSupplierChart();
+            createTransportationChart();
+            createTrendChart();
+            createDisruptionChart();
+            createCategoryChart();
+            createCorrelationChart();
+            
+            if (companySelect.value !== 'all' && companies.length > 1) {
+                createBenchmarkChart();
+            }
+        }
+        
+        // Create supplier chart
+        function createSupplierChart() {
+            const ctx = document.getElementById('supplier-chart').getContext('2d');
+            const suppliers = Object.keys(processedData.supplierData);
+            const leadTimes = suppliers.map(supplier => processedData.supplierData[supplier].avgLeadTime);
+            const variations = suppliers.map(supplier => processedData.supplierData[supplier].variation);
+            
+            // Sort data by lead time
+            const indices = leadTimes.map((_, i) => i);
+            indices.sort((a, b) => leadTimes[a] - leadTimes[b]);
+            
+            const sortedSuppliers = indices.map(i => suppliers[i]);
+            const sortedLeadTimes = indices.map(i => leadTimes[i]);
+            const sortedVariations = indices.map(i => variations[i]);
+            
+            // Generate colors from blue (good) to red (bad)
+            const leadTimeColors = sortedLeadTimes.map((time, i) => {
+                const normalizedValue = i / (sortedLeadTimes.length - 1);
+                return `rgba(${Math.round(normalizedValue * 255)}, ${Math.round((1 - normalizedValue) * 100)}, ${Math.round((1 - normalizedValue) * 255)}, 0.7)`;
+            });
+            
+            // Create chart
+            charts.supplier = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedSuppliers,
+                    datasets: [
+                        {
+                            label: 'Average Lead Time (days)',
+                            data: sortedLeadTimes,
+                            backgroundColor: leadTimeColors,
+                            borderColor: leadTimeColors.map(color => color.replace('0.7', '1')),
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Variation (Standard Deviation)',
+                            data: sortedVariations,
+                            type: 'line',
+                            fill: false,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Variation (SD)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: true,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const supplier = context.label;
+                                    const supplierData = processedData.supplierData[supplier];
+                                    return `Delay Frequency: ${(supplierData.delayFrequency * 100).toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create transportation chart
+        function createTransportationChart() {
+            const ctx = document.getElementById('transportation-chart').getContext('2d');
+            const modes = Object.keys(processedData.transportationData);
+            const leadTimes = modes.map(mode => processedData.transportationData[mode].avgLeadTime);
+            const delayFreqs = modes.map(mode => processedData.transportationData[mode].delayFrequency * 100);
+            
+            // Generate colors
+            const barColors = modes.map((_, i) => {
+                const hue = 200 + (i * 30) % 160;
+                return `hsla(${hue}, 70%, 60%, 0.7)`;
+            });
+            
+            // Create chart
+            charts.transportation = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: modes,
+                    datasets: [
+                        {
+                            label: 'Average Lead Time (days)',
+                            data: leadTimes,
+                            backgroundColor: barColors,
+                            borderColor: barColors.map(color => color.replace('0.7', '1')),
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Delay Frequency (%)',
+                            data: delayFreqs,
+                            type: 'line',
+                            fill: false,
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            pointBackgroundColor: 'rgba(255, 159, 64, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(255, 159, 64, 1)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Delay Frequency (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create trend chart
+        function createTrendChart() {
+            const ctx = document.getElementById('trend-chart').getContext('2d');
+            const trendsData = processedData.trendsData;
+            
+            // Format month labels (YYYY-MM to MMM YYYY)
+            const formattedMonths = trendsData.months.map(month => {
+                const parts = month.split('-');
+                const date = new Date(parts[0], parts[1] - 1, 1);
+                return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            });
+            
+            // Create chart
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: formattedMonths,
+                    datasets: [
+                        {
+                            label: 'Average Lead Time (days)',
+                            data: trendsData.avgLeadTimes,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Delay Percentage (%)',
+                            data: trendsData.delayPercentages,
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Delay Percentage (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create disruption chart
+        function createDisruptionChart() {
+            const ctx = document.getElementById('disruption-chart').getContext('2d');
+            const disruptions = processedData.disruptionData;
+            const types = Object.keys(disruptions);
+            const avgLeadTimes = types.map(type => disruptions[type].avgLeadTime);
+            const counts = types.map(type => disruptions[type].count);
+            
+            // Sort data by average lead time
+            const indices = avgLeadTimes.map((_, i) => i);
+            indices.sort((a, b) => avgLeadTimes[b] - avgLeadTimes[a]);
+            
+            const sortedTypes = indices.map(i => types[i]);
+            const sortedLeadTimes = indices.map(i => avgLeadTimes[i]);
+            const sortedCounts = indices.map(i => counts[i]);
+            
+            // Generate colors from red (bad) to yellow (warning)
+            const colors = sortedLeadTimes.map((_, i) => {
+                const normalizedValue = i / (sortedLeadTimes.length - 1);
+                return `rgba(255, ${Math.round(normalizedValue * 255)}, 0, 0.7)`;
+            });
+            
+            // Create chart
+            charts.disruption = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedTypes,
+                    datasets: [
+                        {
+                            label: 'Average Lead Time (days)',
+                            data: sortedLeadTimes,
+                            backgroundColor: colors,
+                            borderColor: colors.map(color => color.replace('0.7', '1')),
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Frequency',
+                            data: sortedCounts,
+                            type: 'bubble',
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            yAxisID: 'y1',
+                            radius: function(context) {
+                                const value = context.raw;
+                                return Math.sqrt(value) * 5;
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Frequency'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create category chart
+        function createCategoryChart() {
+            const ctx = document.getElementById('category-chart').getContext('2d');
+            const categories = processedData.categoryData;
+            const categoryNames = Object.keys(categories);
+            const avgLeadTimes = categoryNames.map(cat => categories[cat].avgLeadTime);
+            
+            // Sort data by lead time
+            const indices = avgLeadTimes.map((_, i) => i);
+            indices.sort((a, b) => avgLeadTimes[a] - avgLeadTimes[b]);
+            
+            const sortedCategories = indices.map(i => categoryNames[i]);
+            const sortedLeadTimes = indices.map(i => avgLeadTimes[i]);
+            
+            // Generate colors
+            const colors = sortedLeadTimes.map((_, i) => {
+                const hue = 120 + (i * 200 / sortedLeadTimes.length);
+                return `hsla(${hue}, 70%, 60%, 0.7)`;
+            });
+            
+            // Create chart
+            charts.category = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedCategories,
+                    datasets: [{
+                        label: 'Average Lead Time (days)',
+                        data: sortedLeadTimes,
+                        backgroundColor: colors,
+                        borderColor: colors.map(color => color.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create correlation chart
+        function createCorrelationChart() {
+            const ctx = document.getElementById('correlation-chart').getContext('2d');
+            const correlationData = processedData.correlationData;
+            
+            // Create chart
+            charts.correlation = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Order Quantity vs Lead Time',
+                        data: correlationData.orderQuantities.map((qty, i) => ({
+                            x: qty,
+                            y: correlationData.leadTimes[i]
+                        })),
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Order Quantity'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Quantity: ${context.parsed.x}, Lead Time: ${context.parsed.y} days`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create benchmark chart
+        function createBenchmarkChart() {
+            const benchmarkData = processedData.benchmarkData;
+            if (!benchmarkData) return;
+            
+            const ctx = document.getElementById('benchmark-chart').getContext('2d');
+            const selectedCompany = companySelect.value;
+            
+            // Get all companies and their lead times
+            const companyNames = Object.keys(benchmarkData.companyLeadTimes);
+            const leadTimes = companyNames.map(company => benchmarkData.companyLeadTimes[company]);
+            
+            // Generate colors (highlight selected company)
+            const colors = companyNames.map(company => 
+                company === selectedCompany ? 'rgba(255, 99, 132, 0.7)' : 'rgba(54, 162, 235, 0.7)'
+            );
+            
+            const borderColors = companyNames.map(company => 
+                company === selectedCompany ? 'rgba(255, 99, 132, 1)' : 'rgba(54, 162, 235, 1)'
+            );
+            
+            // Create chart
+            charts.benchmark = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: companyNames,
+                    datasets: [{
+                        label: 'Average Lead Time (days)',
+                        data: leadTimes,
+                        backgroundColor: colors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterFooter: function() {
+                                    return `Industry Average: ${benchmarkData.industryAvg.toFixed(1)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Export as image
+        function exportAsImage() {
+            // Alert for demo purposes since html2canvas is not included
+            alert('Export functionality would save the analysis as an image in a real implementation.');
+            
+            // In a real implementation with html2canvas library:
+            // html2canvas(document.querySelector('.analytics-section')).then(canvas => {
+            //     const link = document.createElement('a');
+            //     link.download = 'procurement-analysis.png';
+            //     link.href = canvas.toDataURL('image/png');
+            //     link.click();
+            // });
+        }
+        
+        // Export analysis as CSV
+        function exportAnalysisCSV() {
+            const metrics = processedData.keyMetrics;
+            const data = [
+                ['Metric', 'Value'],
+                ['Average Lead Time', metrics.avgLeadTime + ' days'],
+                ['Best Supplier', metrics.lowestSupplier],
+                ['Best Supplier Lead Time', metrics.lowestLeadTime + ' days'],
+                ['Worst Supplier', metrics.highestSupplier],
+                ['Worst Supplier Lead Time', metrics.highestLeadTime + ' days'],
+                ['Most Consistent Supplier', metrics.mostConsistentSupplier],
+                ['Supplier with Most Delays', metrics.highestDelaySupplier],
+                ['Delay Frequency', metrics.highestDelayFreq],
+                ['Fastest Transportation Mode', metrics.fastestMode],
+                ['Fastest Mode Lead Time', metrics.fastestTime + ' days'],
+                ['Slowest Transportation Mode', metrics.slowestMode],
+                ['Slowest Mode Lead Time', metrics.slowestTime + ' days'],
+                ['Category with Shortest Lead Time', metrics.shortestCategory],
+                ['Shortest Category Lead Time', metrics.shortestTime + ' days'],
+                ['Category with Longest Lead Time', metrics.longestCategory],
+                ['Longest Category Lead Time', metrics.longestTime + ' days'],
+                ['Order Quantity & Lead Time Correlation', processedData.correlationData.correlation.toFixed(2)]
+            ];
+            
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'procurement-analysis.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Helper functions
+        
+        // Calculate average of an array
+        function average(arr) {
+            if (!arr || arr.length === 0) return 0;
+            
+            // Filter out non-numeric values
+            const validNumbers = arr.filter(val => 
+                val !== null && 
+                val !== undefined && 
+                !isNaN(val) &&
+                typeof val === 'number'
+            );
+            
+            if (validNumbers.length === 0) return 0;
+            return validNumbers.reduce((sum, val) => sum + val, 0) / validNumbers.length;
+        }
+        
+        // Calculate standard deviation
+        function standardDeviation(arr) {
+            if (!arr || arr.length <= 1) return 0;
+            
+            // Filter out non-numeric values
+            const validNumbers = arr.filter(val => 
+                val !== null && 
+                val !== undefined && 
+                !isNaN(val) &&
+                typeof val === 'number'
+            );
+            
+            if (validNumbers.length <= 1) return 0;
+            
+            const avg = average(validNumbers);
+            const squareDiffs = validNumbers.map(value => {
+                const diff = value - avg;
+                return diff * diff;
+            });
+            
+            const avgSquareDiff = average(squareDiffs);
+            return Math.sqrt(avgSquareDiff);
+        }
+        
+        // Calculate correlation coefficient
+        function calculateCorrelation(x, y) {
+            if (x.length !== y.length || x.length === 0) return 0;
+            
+            // Filter out pairs where either value is not a number
+            const pairs = x.map((value, i) => [value, y[i]])
+                .filter(pair => 
+                    pair[0] !== null && 
+                    pair[0] !== undefined && 
+                    !isNaN(pair[0]) &&
+                    pair[1] !== null && 
+                    pair[1] !== undefined && 
+                    !isNaN(pair[1])
+                );
+                
+            if (pairs.length === 0) return 0;
+            
+            const validX = pairs.map(pair => pair[0]);
+            const validY = pairs.map(pair => pair[1]);
+            
+            const n = validX.length;
+            const xAvg = average(validX);
+            const yAvg = average(validY);
+            
+            let numerator = 0;
+            let xDenominator = 0;
+            let yDenominator = 0;
+            
+            for (let i = 0; i < n; i++) {
+                const xDiff = validX[i] - xAvg;
+                const yDiff = validY[i] - yAvg;
+                
+                numerator += xDiff * yDiff;
+                xDenominator += xDiff * xDiff;
+                yDenominator += yDiff * yDiff;
+            }
+            
+            if (xDenominator === 0 || yDenominator === 0) return 0;
+            
+            return numerator / Math.sqrt(xDenominator * yDenominator);
+        }
+        
+        // Function to load demo data
+        function loadDemoData() {
+            // Use the sample data defined at the top of the script
+            rawData = sampleData;
+            
+            // Extract unique companies
+            companies = [...new Set(rawData.map(row => row.Company))];
+            populateCompanyDropdown();
+            
+            // Process data and show analytics
+            processData();
+            showAnalytics();
+            
+            // Show relevant UI elements
+            loader.style.display = 'none';
+            companySelector.style.display = 'block';
+            analyticsSection.style.display = 'block';
+            benchmarkSection.style.display = 'block';
+            exportButtons.style.display = 'block';
+            
+            // Display confirmation
+            fileNameDisplay.textContent = 'Using demo data';
+        }
+    </script>
+</body>
+</html> cards
             createMetricCard('Average Lead Time', `${metrics.avgLeadTime} days`);
             createMetricCard('Best Supplier', `${metrics.lowestSupplier} (${metrics.lowestLeadTime} days)`);
             createMetricCard('Most Consistent Supplier', metrics.mostConsistentSupplier);
