@@ -3059,3 +3059,306 @@ initEnhancements();
 Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
 Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+
+// Add specific supplier companies and metrics selector
+function addSupplierSelector() {
+    // Create supplier companies container
+    const headerArea = document.querySelector('header');
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'controls-container';
+    headerArea.insertAdjacentElement('afterend', controlsContainer);
+    
+    // Create supplier selector
+    const supplierSelector = document.createElement('div');
+    supplierSelector.className = 'supplier-selector';
+    supplierSelector.innerHTML = `
+        <label for="supplier-select">Select Supplier Company:</label>
+        <select id="supplier-select">
+            <option value="all">All Companies</option>
+            <option value="GammaCorp">GammaCorp</option>
+            <option value="AlphaSupplies">AlphaSupplies</option>
+            <option value="BetaTech">BetaTech</option>
+        </select>
+    `;
+    
+    // Create metrics selector
+    const metricsSelector = document.createElement('div');
+    metricsSelector.className = 'metrics-selector';
+    metricsSelector.innerHTML = `
+        <label for="metrics-select">Select Metrics to Display:</label>
+        <select id="metrics-select" multiple>
+            <option value="leadTime" selected>Lead Time</option>
+            <option value="onTimeDelivery" selected>On-Time Delivery</option>
+            <option value="supplierPerformance" selected>Supplier Performance</option>
+            <option value="transportationMode" selected>Transportation Mode</option>
+            <option value="disruptions" selected>Disruptions</option>
+            <option value="productCategory" selected>Product Categories</option>
+            <option value="correlations" selected>Correlations</option>
+            <option value="forecasting" selected>Forecasting</option>
+        </select>
+        <button id="apply-metrics" class="apply-button">Apply</button>
+    `;
+    
+    // Create theme toggle
+    const themeToggle = document.createElement('div');
+    themeToggle.className = 'theme-toggle';
+    themeToggle.innerHTML = `
+        <button id="theme-toggle-btn">
+            <i class="fas fa-sun"></i>
+            <i class="fas fa-moon"></i>
+        </button>
+    `;
+    
+    // Add all controls to container
+    controlsContainer.appendChild(supplierSelector);
+    controlsContainer.appendChild(metricsSelector);
+    controlsContainer.appendChild(themeToggle);
+    
+    // Add event listeners
+    const supplierSelect = document.getElementById('supplier-select');
+    supplierSelect.addEventListener('change', filterBySupplier);
+    
+    const applyMetricsBtn = document.getElementById('apply-metrics');
+    applyMetricsBtn.addEventListener('click', applySelectedMetrics);
+    
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    themeToggleBtn.addEventListener('click', toggleTheme);
+}
+
+// Filter data by supplier company
+function filterBySupplier() {
+    const selectedSupplier = document.getElementById('supplier-select').value;
+    
+    // Update UI to show loading state
+    const loader = document.getElementById('loader');
+    if (loader) loader.style.display = 'block';
+    
+    setTimeout(() => {
+        // Filter data based on selected supplier
+        if (selectedSupplier === 'all') {
+            // Use all data
+            updateChartsWithFilteredData(rawData);
+        } else {
+            // Filter data for selected supplier
+            const filteredData = rawData.filter(row => {
+                return row.Supplier === selectedSupplier || 
+                       row.supplier === selectedSupplier ||
+                       row.SupplierCompany === selectedSupplier ||
+                       row.Company === selectedSupplier;
+            });
+            
+            updateChartsWithFilteredData(filteredData);
+        }
+        
+        // Hide loader
+        if (loader) loader.style.display = 'none';
+    }, 500);
+}
+
+// Update charts with filtered data
+function updateChartsWithFilteredData(filteredData) {
+    // Store original data temporarily
+    const originalData = rawData;
+    
+    // Replace raw data with filtered data
+    rawData = filteredData;
+    
+    // Re-process data and update charts
+    processData();
+    
+    // Update key metrics display
+    displayKeyMetrics();
+    
+    // Destroy and recreate charts
+    Object.values(charts).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    
+    // Create new charts
+    createCharts();
+    
+    // Create forecast charts
+    createForecastCharts();
+    
+    // Restore original data
+    rawData = originalData;
+    
+    // Update supplier name in UI
+    const selectedSupplier = document.getElementById('supplier-select').value;
+    const supplierInfo = document.createElement('div');
+    supplierInfo.className = 'supplier-info';
+    
+    if (selectedSupplier !== 'all') {
+        supplierInfo.innerHTML = `<h3>Showing data for: ${selectedSupplier}</h3>`;
+        // Add it after the controls container
+        const controlsContainer = document.querySelector('.controls-container');
+        const existingInfo = document.querySelector('.supplier-info');
+        
+        if (existingInfo) {
+            existingInfo.innerHTML = supplierInfo.innerHTML;
+        } else if (controlsContainer) {
+            controlsContainer.insertAdjacentElement('afterend', supplierInfo);
+        }
+    } else {
+        // Remove supplier info if showing all
+        const existingInfo = document.querySelector('.supplier-info');
+        if (existingInfo) existingInfo.remove();
+    }
+}
+
+// Apply selected metrics
+function applySelectedMetrics() {
+    const metricsSelect = document.getElementById('metrics-select');
+    const selectedMetrics = Array.from(metricsSelect.selectedOptions).map(option => option.value);
+    
+    // Map metrics to chart containers
+    const metricToChartMap = {
+        'leadTime': ['trend-chart'],
+        'onTimeDelivery': ['delivery-forecast-chart'],
+        'supplierPerformance': ['supplier-chart', 'supplier-forecast-chart'],
+        'transportationMode': ['transportation-chart'],
+        'disruptions': ['disruption-chart'],
+        'productCategory': ['category-chart'],
+        'correlations': ['correlation-chart'],
+        'forecasting': ['lead-time-forecast-chart', 'supplier-forecast-chart', 'delivery-forecast-chart']
+    };
+    
+    // Show/hide chart containers based on selection
+    for (const [metric, chartIds] of Object.entries(metricToChartMap)) {
+        const selected = selectedMetrics.includes(metric);
+        
+        chartIds.forEach(chartId => {
+            const container = document.getElementById(chartId)?.closest('.chart-container');
+            if (container) {
+                container.style.display = selected ? 'block' : 'none';
+            }
+        });
+    }
+    
+    // Handle forecast section separately
+    const forecastSection = document.querySelector('.forecast-section');
+    if (forecastSection) {
+        forecastSection.style.display = selectedMetrics.includes('forecasting') ? 'block' : 'none';
+    }
+    
+    // Show success message
+    const message = document.createElement('div');
+    message.className = 'metrics-applied-message';
+    message.textContent = 'Metrics display updated!';
+    message.style.position = 'fixed';
+    message.style.top = '20px';
+    message.style.right = '20px';
+    message.style.backgroundColor = 'var(--accent-color)';
+    message.style.color = 'white';
+    message.style.padding = '10px 15px';
+    message.style.borderRadius = '5px';
+    message.style.boxShadow = 'var(--shadow)';
+    message.style.zIndex = '1000';
+    
+    document.body.appendChild(message);
+    
+    // Remove message after 3 seconds
+    setTimeout(() => {
+        message.remove();
+    }, 3000);
+}
+
+// Toggle between light and dark themes
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDarkMode = html.getAttribute('data-theme') === 'dark';
+    
+    if (isDarkMode) {
+        // Switch to light theme
+        html.setAttribute('data-theme', 'light');
+        // Update theme colors
+        document.documentElement.style.setProperty('--primary-color', '#4361ee');
+        document.documentElement.style.setProperty('--secondary-color', '#3f37c9');
+        document.documentElement.style.setProperty('--accent-color', '#4895ef');
+        document.documentElement.style.setProperty('--bg-color', '#f8f9fa');
+        document.documentElement.style.setProperty('--text-color', '#2b2d42');
+        document.documentElement.style.setProperty('--card-bg', '#ffffff');
+        document.documentElement.style.setProperty('--shadow', '0 4px 6px rgba(0, 0, 0, 0.1)');
+    } else {
+        // Switch to dark theme
+        html.setAttribute('data-theme', 'dark');
+        // Update theme colors
+        document.documentElement.style.setProperty('--primary-color', '#3a4cd3');
+        document.documentElement.style.setProperty('--secondary-color', '#282f8b');
+        document.documentElement.style.setProperty('--accent-color', '#3a78de');
+        document.documentElement.style.setProperty('--bg-color', '#1f2128');
+        document.documentElement.style.setProperty('--text-color', '#e6e8f0');
+        document.documentElement.style.setProperty('--card-bg', '#2a2d39');
+        document.documentElement.style.setProperty('--shadow', '0 4px 6px rgba(0, 0, 0, 0.3)');
+    }
+    
+    // Update toggle button appearance
+    const toggleBtn = document.getElementById('theme-toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.classList.toggle('light-mode', !isDarkMode);
+    }
+    
+    // Update chart colors
+    updateChartColors(!isDarkMode);
+}
+
+// Update chart colors based on theme
+function updateChartColors(isLightMode) {
+    // Set chart default colors based on theme
+    if (isLightMode) {
+        Chart.defaults.color = '#2b2d42';
+        Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.1)';
+        Chart.defaults.scale.grid.color = 'rgba(0, 0, 0, 0.05)';
+    } else {
+        Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+        Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+    }
+    
+    // Redraw charts if they exist
+    if (Object.keys(charts).length > 0) {
+        Object.values(charts).forEach(chart => {
+            if (chart) chart.update();
+        });
+    }
+}
+
+// Add cursor-following animation
+function addCursorAnimation() {
+    const cursor = document.createElement('div');
+    cursor.className = 'cursor-follower';
+    document.body.appendChild(cursor);
+    
+    document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+    
+    // Add cursor hover effects to interactive elements
+    const interactiveElements = document.querySelectorAll('button, select, .metric-card, .chart-container');
+    
+    interactiveElements.forEach(element => {
+        element.addEventListener('mouseenter', () => {
+            cursor.classList.add('cursor-hover');
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            cursor.classList.remove('cursor-hover');
+        });
+    });
+}
+
+// Update init function to include new features
+const originalInitEnhancements = initEnhancements;
+initEnhancements = function() {
+    originalInitEnhancements();
+    
+    // Add supplier and metrics selectors
+    addSupplierSelector();
+    
+    // Add cursor animation
+    addCursorAnimation();
+    
+    // Set initial theme to dark
+    document.documentElement.setAttribute('data-theme', 'dark');
+};
