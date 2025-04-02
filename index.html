@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procurement Lead Time Analysis Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --bg-color: #f8f9fa;
+            --text-color: #2b2d42;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .file-upload-label {
+            display: block;
+            padding: 12px 24px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload-label:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .company-selector {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .company-selector select {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #ddd;
+            background-color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        .analytics-section {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .insights-summary {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        
+        .insights-summary h2 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .key-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .metric-title {
+            font-size: 1rem;
+            color: var(--text-color);
+            margin-bottom: 10px;
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .chart-container {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            height: 400px;
+            transition: transform 0.3s ease;
+        }
+        
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        canvas {
+            width: 100% !important;
+            height: calc(100% - 40px) !important;
+        }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loader div {
+            width: 20px;
+            height: 20px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 5px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .loader div:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .loader div:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+        
+        .export-buttons {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .export-btn {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .benchmark-section {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin: 30px 0;
+            display: none;
+        }
+
+        .benchmark-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Procurement Lead Time Analysis Tool</h1>
+            <p>Upload your procurement data to gain valuable insights</p>
+        </header>
+        
+        <div class="upload-section">
+            <h2>Upload Your Data</h2>
+            <p>Select a CSV file with your procurement lead time data</p>
+            <div class="file-upload">
+                <label class="file-upload-label">
+                    <i class="fas fa-cloud-upload-alt"></i> Choose CSV File
+                    <input type="file" id="csv-file" accept=".csv">
+                </label>
+            </div>
+            <div id="file-name"></div>
+            
+            <div class="company-selector" id="company-selector">
+                <label for="company-select">Select Company:</label>
+                <select id="company-select">
+                    <option value="all">All Companies</option>
+                </select>
+            </div>
+            
+            <div class="loader" id="loader">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+        </div>
+        
+        <div class="analytics-section" id="analytics-section">
+            <div class="insights-summary">
+                <h2>Key Insights Summary</h2>
+                <div class="key-metrics" id="key-metrics">
+                    <!-- Key metrics will be added here dynamically -->
+                </div>
+            </div>
+            
+            <div class="benchmark-section" id="benchmark-section">
+                <h2>Benchmark Comparison</h2>
+                <p>See how the selected company compares to others</p>
+                <div class="chart-container">
+                    <h3 class="chart-title">Lead Time Benchmark</h3>
+                    <canvas id="benchmark-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Supplier Lead Time Comparison</h3>
+                    <canvas id="supplier-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Transportation Mode Analysis</h3>
+                    <canvas id="transportation-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Lead Time Trends Over Time</h3>
+                    <canvas id="trend-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Disruption Impact Analysis</h3>
+                    <canvas id="disruption-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Product Category Lead Times</h3>
+                    <canvas id="category-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Correlation: Order Quantity & Lead Time</h3>
+                    <canvas id="correlation-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="export-buttons" id="export-buttons">
+                <button class="export-btn" id="export-image">Export as Image</button>
+                <button class="export-btn" id="export-csv">Export Analysis as CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store data and charts
+        let rawData = [];
+        let processedData = {};
+        let companies = [];
+        let charts = {};
+        
+        // DOM elements
+        const fileInput = document.getElementById('csv-file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const companySelector = document.getElementById('company-selector');
+        const companySelect = document.getElementById('company-select');
+        const analyticsSection = document.getElementById('analytics-section');
+        const keyMetricsContainer = document.getElementById('key-metrics');
+        const benchmarkSection = document.getElementById('benchmark-section');
+        const loader = document.getElementById('loader');
+        const exportButtons = document.getElementById('export-buttons');
+        
+        // Add event listeners
+        fileInput.addEventListener('change', handleFileUpload);
+        companySelect.addEventListener('change', updateAnalytics);
+        document.getElementById('export-image').addEventListener('click', exportAsImage);
+        document.getElementById('export-csv').addEventListener('click', exportAnalysisCSV);
+        
+        // Handle file upload
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            fileNameDisplay.textContent = `Selected file: ${file.name}`;
+            loader.style.display = 'block';
+            
+            // Parse CSV file
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    console.log('Parsed data:', results);
+                    rawData = results.data.filter(row => 
+                        row.Company && row.Supplier && row.LeadTimeDays !== undefined);
+                    
+                    if (rawData.length === 0) {
+                        alert('No valid data found in the CSV file.');
+                        loader.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Extract unique companies
+                    companies = [...new Set(rawData.map(row => row.Company))];
+                    populateCompanyDropdown();
+                    
+                    // Process data and show analytics
+                    processData();
+                    showAnalytics();
+                    
+                    loader.style.display = 'none';
+                    companySelector.style.display = 'block';
+                    analyticsSection.style.display = 'block';
+                    benchmarkSection.style.display = 'block';
+                    exportButtons.style.display = 'block';
+                },
+                error: function(error) {
+                    console.error('Error parsing CSV:', error);
+                    alert('Error parsing the CSV file. Please check the format.');
+                    loader.style.display = 'none';
+                }
+            });
+        }
+        
+        // Populate company dropdown
+        function populateCompanyDropdown() {
+            // Clear previous options except the first one
+            while (companySelect.options.length > 1) {
+                companySelect.remove(1);
+            }
+            
+            // Add company options
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company;
+                option.textContent = company;
+                companySelect.appendChild(option);
+            });
+        }
+        
+        // Process data for analysis
+        function processData() {
+            const selectedCompany = companySelect.value;
+            let filteredData = rawData;
+            
+            // Filter by selected company if not "all"
+            if (selectedCompany !== 'all') {
+                filteredData = rawData.filter(row => row.Company === selectedCompany);
+            }
+            
+            // Process supplier data
+            const supplierData = processSupplierData(filteredData);
+            
+            // Process transportation data
+            const transportationData = processTransportationData(filteredData);
+            
+            // Process monthly trends
+            const trendsData = processTrendsData(filteredData);
+            
+            // Process disruption data
+            const disruptionData = processDisruptionData(filteredData);
+            
+            // Process category data
+            const categoryData = processCategoryData(filteredData);
+            
+            // Process correlation data
+            const correlationData = processCorrelationData(filteredData);
+            
+            // Process benchmark data
+            const benchmarkData = processBenchmarkData();
+            
+            // Store processed data
+            processedData = {
+                supplierData,
+                transportationData,
+                trendsData,
+                disruptionData,
+                categoryData,
+                correlationData,
+                benchmarkData,
+                keyMetrics: calculateKeyMetrics(filteredData, supplierData, transportationData, disruptionData, categoryData)
+            };
+        }
+        
+        // Process supplier data
+        function processSupplierData(data) {
+            const suppliers = {};
+            
+            // Group by supplier
+            data.forEach(row => {
+                if (!suppliers[row.Supplier]) {
+                    suppliers[row.Supplier] = {
+                        leadTimes: [],
+                        delays: 0,
+                        totalOrders: 0
+                    };
+                }
+                
+                suppliers[row.Supplier].leadTimes.push(row.LeadTimeDays);
+                suppliers[row.Supplier].totalOrders++;
+                
+                // Count delays (lead time exceeding expected lead time)
+                if (row.LeadTimeDays > row.ExpectedLeadTimeDays) {
+                    suppliers[row.Supplier].delays++;
+                }
+            });
+            
+            // Calculate averages and variations
+            Object.keys(suppliers).forEach(supplier => {
+                const leadTimes = suppliers[supplier].leadTimes;
+                suppliers[supplier].avgLeadTime = average(leadTimes);
+                suppliers[supplier].variation = standardDeviation(leadTimes);
+                suppliers[supplier].delayFrequency = suppliers[supplier].delays / suppliers[supplier].totalOrders;
+            });
+            
+            return suppliers;
+        }
+        
+        // Process transportation data
+        function processTransportationData(data) {
+            const transportModes = {};
+            
+            // Group by transportation mode
+            data.forEach(row => {
+                if (!row.TransportationMode) return;
+                
+                if (!transportModes[row.TransportationMode]) {
+                    transportModes[row.TransportationMode] = {
+                        leadTimes: [],
+                        delays: 0,
+                        totalShipments: 0
+                    };
+                }
+                
+                transportModes[row.TransportationMode].leadTimes.push(row.LeadTimeDays);
+                transportModes[row.TransportationMode].totalShipments++;
+                
+                // Count delays
+                if (row.LeadTimeDays > row.ExpectedLeadTimeDays) {
+                    transportModes[row.TransportationMode].delays++;
+                }
+            });
+            
+            // Calculate averages and delay frequencies
+            Object.keys(transportModes).forEach(mode => {
+                transportModes[mode].avgLeadTime = average(transportModes[mode].leadTimes);
+                transportModes[mode].delayFrequency = transportModes[mode].delays / transportModes[mode].totalShipments;
+            });
+            
+            return transportModes;
+        }
+        
+        // Process monthly trends data
+        function processTrendsData(data) {
+            const months = {};
+            
+            // Group by month
+            data.forEach(row => {
+                if (!row.OrderDate) return;
+                
+                // Extract month from date (assuming date format is MM/DD/YYYY or YYYY-MM-DD)
+                let date;
+                try {
+                    date = new Date(row.OrderDate);
+                    if (isNaN(date.getTime())) return; // Skip invalid dates
+                } catch (e) {
+                    return; // Skip invalid dates
+                }
+                
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!months[monthKey]) {
+                    months[monthKey] = {
+                        leadTimes: [],
+                        delays: 0,
+                        totalOrders: 0
+                    };
+                }
+                
+                months[monthKey].leadTimes.push(row.LeadTimeDays);
+                months[monthKey].totalOrders++;
+                
+                // Count delays
+                if (row.LeadTimeDays > row.ExpectedLeadTimeDays) {
+                    months[monthKey].delays++;
+                }
+            });
+            
+            // Calculate averages and delay percentages
+            Object.keys(months).forEach(month => {
+                months[month].avgLeadTime = average(months[month].leadTimes);
+                months[month].delayPercentage = (months[month].delays / months[month].totalOrders) * 100;
+            });
+            
+            // Sort by month
+            const sortedMonths = Object.keys(months).sort();
+            
+            return {
+                months: sortedMonths,
+                avgLeadTimes: sortedMonths.map(month => months[month].avgLeadTime),
+                delayPercentages: sortedMonths.map(month => months[month].delayPercentage)
+            };
+        }
+        
+        // Process disruption data
+        function processDisruptionData(data) {
+            const disruptions = {};
+            
+            // Group by disruption type
+            data.forEach(row => {
+                if (!row.DisruptionType || row.DisruptionType === 'None') return;
+                
+                if (!disruptions[row.DisruptionType]) {
+                    disruptions[row.DisruptionType] = {
+                        leadTimes: [],
+                        count: 0
+                    };
+                }
+                
+                disruptions[row.DisruptionType].leadTimes.push(row.LeadTimeDays);
+                disruptions[row.DisruptionType].count++;
+            });
+            
+            // Calculate average lead times
+            Object.keys(disruptions).forEach(type => {
+                disruptions[type].avgLeadTime = average(disruptions[type].leadTimes);
+            });
+            
+            return disruptions;
+        }
+        
+        // Process category data
+        function processCategoryData(data) {
+            const categories = {};
+            
+            // Group by product category
+            data.forEach(row => {
+                if (!row.ProductCategory) return;
+                
+                if (!categories[row.ProductCategory]) {
+                    categories[row.ProductCategory] = {
+                        leadTimes: []
+                    };
+                }
+                
+                categories[row.ProductCategory].leadTimes.push(row.LeadTimeDays);
+            });
+            
+            // Calculate average lead times
+            Object.keys(categories).forEach(category => {
+                categories[category].avgLeadTime = average(categories[category].leadTimes);
+            });
+            
+            return categories;
+        }
+        
+        // Process correlation data
+        function processCorrelationData(data) {
+            // Filter out rows with missing data
+            const validData = data.filter(row => 
+                row.OrderQuantity !== undefined && 
+                row.LeadTimeDays !== undefined);
+            
+            // Extract order quantities and lead times
+            const orderQuantities = validData.map(row => row.OrderQuantity);
+            const leadTimes = validData.map(row => row.LeadTimeDays);
+            
+            // Calculate correlation coefficient
+            const correlation = calculateCorrelation(orderQuantities, leadTimes);
+            
+            return {
+                orderQuantities,
+                leadTimes,
+                correlation
+            };
+        }
+        
+        // Process benchmark data
+        function processBenchmarkData() {
+            if (companies.length <= 1) return null;
+            
+            const companyLeadTimes = {};
+            
+            // Calculate average lead time for each company
+            companies.forEach(company => {
+                const companyData = rawData.filter(row => row.Company === company);
+                const leadTimes = companyData.map(row => row.LeadTimeDays);
+                companyLeadTimes[company] = average(leadTimes);
+            });
+            
+            // Calculate industry average
+            const industryAvg = average(Object.values(companyLeadTimes));
+            
+            return {
+                companyLeadTimes,
+                industryAvg
+            };
+        }
+        
+        // Calculate key metrics
+        function calculateKeyMetrics(data, supplierData, transportationData, disruptionData, categoryData) {
+            // Find supplier with highest and lowest lead time
+            let highestSupplier = null;
+            let lowestSupplier = null;
+            let highestLeadTime = -Infinity;
+            let lowestLeadTime = Infinity;
+            
+            Object.entries(supplierData).forEach(([supplier, info]) => {
+                if (info.avgLeadTime > highestLeadTime) {
+                    highestLeadTime = info.avgLeadTime;
+                    highestSupplier = supplier;
+                }
+                if (info.avgLeadTime < lowestLeadTime) {
+                    lowestLeadTime = info.avgLeadTime;
+                    lowestSupplier = supplier;
+                }
+            });
+            
+            // Find most consistent supplier (least variation)
+            let mostConsistentSupplier = null;
+            let lowestVariation = Infinity;
+            
+            Object.entries(supplierData).forEach(([supplier, info]) => {
+                if (info.variation < lowestVariation) {
+                    lowestVariation = info.variation;
+                    mostConsistentSupplier = supplier;
+                }
+            });
+            
+            // Find supplier with highest delay frequency
+            let highestDelaySupplier = null;
+            let highestDelayFreq = -Infinity;
+            
+            Object.entries(supplierData).forEach(([supplier, info]) => {
+                if (info.delayFrequency > highestDelayFreq) {
+                    highestDelayFreq = info.delayFrequency;
+                    highestDelaySupplier = supplier;
+                }
+            });
+            
+            // Find fastest and slowest transportation mode
+            let fastestMode = null;
+            let slowestMode = null;
+            let fastestTime = Infinity;
+            let slowestTime = -Infinity;
+            
+            Object.entries(transportationData).forEach(([mode, info]) => {
+                if (info.avgLeadTime < fastestTime) {
+                    fastestTime = info.avgLeadTime;
+                    fastestMode = mode;
+                }
+                if (info.avgLeadTime > slowestTime) {
+                    slowestTime = info.avgLeadTime;
+                    slowestMode = mode;
+                }
+            });
+            
+            // Find transportation mode with highest delay frequency
+            let highestDelayMode = null;
+            let highestModeDelayFreq = -Infinity;
+            
+            Object.entries(transportationData).forEach(([mode, info]) => {
+                if (info.delayFrequency > highestModeDelayFreq) {
+                    highestModeDelayFreq = info.delayFrequency;
+                    highestDelayMode = mode;
+                }
+            });
+            
+            // Find product category with shortest and longest lead times
+            let shortestCategory = null;
+            let longestCategory = null;
+            let shortestTime = Infinity;
+            let longestTime = -Infinity;
+            
+            Object.entries(categoryData).forEach(([category, info]) => {
+                if (info.avgLeadTime < shortestTime) {
+                    shortestTime = info.avgLeadTime;
+                    shortestCategory = category;
+                }
+                if (info.avgLeadTime > longestTime) {
+                    longestTime = info.avgLeadTime;
+                    longestCategory = category;
+                }
+            });
+            
+            // Calculate average lead time
+            const allLeadTimes = data.map(row => row.LeadTimeDays);
+            const avgLeadTime = average(allLeadTimes);
+            
+            return {
+                highestSupplier,
+                highestLeadTime: highestLeadTime ? highestLeadTime.toFixed(1) : 'N/A',
+                lowestSupplier,
+                lowestLeadTime: lowestLeadTime !== Infinity ? lowestLeadTime.toFixed(1) : 'N/A',
+                mostConsistentSupplier,
+                highestDelaySupplier,
+                highestDelayFreq: highestDelayFreq ? (highestDelayFreq * 100).toFixed(1) + '%' : 'N/A',
+                fastestMode,
+                fastestTime: fastestTime !== Infinity ? fastestTime.toFixed(1) : 'N/A',
+                slowestMode,
+                slowestTime: slowestTime ? slowestTime.toFixed(1) : 'N/A',
+                highestDelayMode,
+                shortestCategory,
+                shortestTime: shortestTime !== Infinity ? shortestTime.toFixed(1) : 'N/A',
+                longestCategory,
+                longestTime: longestTime ? longestTime.toFixed(1) : 'N/A',
+                avgLeadTime: avgLeadTime ? avgLeadTime.toFixed(1) : 'N/A'
+            };
+        }
+        
+        // Show analytics
+        function showAnalytics() {
+            displayKeyMetrics();
+            createCharts();
+        }
+        
+        // Update analytics based on company selection
+        function updateAnalytics() {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            
+            // Process data and update visualizations
+            processData();
+            displayKeyMetrics();
+            createCharts();
+            
+            // Show/hide benchmark section
+            if (companySelect.value !== 'all' && companies.length > 1) {
+                benchmarkSection.style.display = 'block';
+            } else {
+                benchmarkSection.style.display = 'none';
+            }
+        }
+        
+        // Display key metrics
+        function displayKeyMetrics() {
+            const metrics = processedData.keyMetrics;
+            keyMetricsContainer.innerHTML = '';
+            
+            // Create metric cards
+            createMetricCard('Average Lead Time', `${metrics.avgLeadTime} days`);
+            createMetricCard('Best Supplier', `${metrics.lowestSupplier} (${metrics.lowestLeadTime} days)`);
+            createMetricCard('Most Consistent Supplier', metrics.mostConsistentSupplier);
+            createMetricCard('Fastest Transportation', `${metrics.fastestMode} (${metrics.fastestTime} days)`);
+            createMetricCard('Category with Shortest Lead Time', `${metrics.shortestCategory} (${metrics.shortTime} days)`);
+            createMetricCard('Supplier with Most Delays', `${metrics.highestDelaySupplier} (${metrics.highestDelayFreq})`);
+            
+            // Add correlation metric
+            const correlation = processedData.correlationData.correlation;
+            let correlationDesc = 'No correlation';
+            
+            if (correlation > 0.7) correlationDesc = 'Strong positive';
+            else if (correlation > 0.4) correlationDesc = 'Moderate positive';
+            else if (correlation > 0.1) correlationDesc = 'Weak positive';
+            else if (correlation < -0.7) correlationDesc = 'Strong negative';
+            else if (correlation < -0.4) correlationDesc = 'Moderate negative';
+            else if (correlation < -0.1) correlationDesc = 'Weak negative';
+            
+            createMetricCard('Order Quantity & Lead Time', `${correlationDesc} (${correlation.toFixed(2)})`);
+        }
+        
+        // Create metric
