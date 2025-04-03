@@ -3,92 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procurement Analysis Tool</title>
+    <title>Lead Time Variability & Bullwhip Effect Analysis Tool</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="light-mode">
     <div class="cursor-follower"></div>
-    <div class="background-animation">
-        <div class="bg-gradient"></div>
-    </div>
+    <div class="background-animation"></div>
     
     <header>
-        <div class="header-content">
-            <h1>Procurement Analysis Tool</h1>
-            <p>Lead Time Variability and Bullwhip Effect Analysis</p>
-            <p>Nabiev Azamat | Student ID: 12345</p>
+        <h1>Lead Time Variability & Bullwhip Effect Analysis Tool</h1>
+        <div class="student-info">
+            <p>Nabiev Azamat | Student ID: 2217423</p>
         </div>
+        <nav>
+            <button id="homeBtn" class="nav-btn"><i class="fas fa-home"></i> Home</button>
+            <div class="dropdown">
+                <button id="supplierDropdown" class="nav-btn dropdown-btn">
+                    <i class="fas fa-industry"></i> Select Supplier <i class="fas fa-caret-down"></i>
+                </button>
+                <div class="dropdown-content">
+                    <a href="#" data-supplier="GammaCorp">GammaCorp</a>
+                    <a href="#" data-supplier="Alpha Supplies">Alpha Supplies</a>
+                    <a href="#" data-supplier="BetaTech">BetaTech</a>
+                </div>
+            </div>
+            <button id="compareBtn" class="nav-btn"><i class="fas fa-balance-scale"></i> Compare Suppliers</button>
+            <button id="themeToggle" class="nav-btn"><i class="fas fa-moon"></i> Dark Mode</button>
+        </nav>
     </header>
-    
-    <div class="controls">
-        <div class="toggle-container">
-            <span>Light</span>
-            <label class="toggle">
-                <input type="checkbox" id="theme-toggle">
-                <span class="slider"></span>
-            </label>
-            <span>Dark</span>
-        </div>
-        
-        <div class="supplier-selector">
-            <button id="home-btn" class="home-btn">Home</button>
-            <button id="alpha-btn" class="supplier-btn">Alpha Supplies</button>
-            <button id="beta-btn" class="supplier-btn">BetaTech</button>
-            <button id="gamma-btn" class="supplier-btn">GammaCorp</button>
-            <button id="compare-btn" class="compare-btn">Compare</button>
-            <button id="forecast-btn" class="forecast-btn">Forecast</button>
-        </div>
-    </div>
-    
-    <div class="upload-container" id="upload-section">
-        <h2>Upload your procurement data</h2>
-        <p>Upload a CSV file with your procurement data to begin the analysis</p>
-        <input type="file" id="file-input" class="file-input" accept=".csv">
-        <label for="file-input" class="upload-btn">Choose File</label>
-        <p id="file-name">No file chosen</p>
-        <button id="analyze-btn" style="display: none; margin-top: 10px;">Analyze Data</button>
-        <div class="loader" id="loader"></div>
-    </div>
-    
-    <div id="results-container" style="display: none;">
-        <div class="metrics-grid" id="metrics-grid">
-            <!-- Metrics cards will be generated here -->
-        </div>
-        
-        <div class="dashboard" id="dashboard">
-            <!-- Charts will be generated here -->
-        </div>
-        
-        <div class="answers-container" id="answers-container">
-            <h2>Analysis Results</h2>
-            <!-- Answers to questions will be displayed here -->
-        </div>
-    </div>
-    
-    <!-- Forecasting Modal -->
-    <div id="forecast-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Forecast Future Lead Times</h2>
-            <div id="forecast-form">
-                <p>Select a supplier to forecast:</p>
-                <select id="forecast-supplier" style="margin: 10px 0; padding: 8px; width: 100%;">
-                    <option value="Alpha Supplies">Alpha Supplies</option>
-                    <option value="BetaTech">BetaTech</option>
-                    <option value="GammaCorp">GammaCorp</option>
-                </select>
-                <p>Select forecast horizon (months):</p>
-                <input type="number" id="forecast-horizon" min="1" max="12" value="3" style="margin: 10px 0; padding: 8px; width: 100%;">
-                <button id="generate-forecast" style="margin-top: 10px; width: 100%;">Generate Forecast</button>
-            </div>
-            <div id="forecast-results" style="margin-top: 20px;">
-                <!-- Forecast results will be displayed here -->
-            </div>
-        </div>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script src="script.js"></script>
+    <main>
+        <section id="upload-section" class="card">
+            <h2><i class="fas fa-upload"></i> Upload Your Procurement Data</h2>
+            <p>Upload your CSV file containing procurement data to analyze lead time variability and the bullwhip effect.</p>
+            <div class="file-upload-container">
+                <label for="csvFileInput" class="file-upload-label">
+                    <i class="fas fa-file-csv"></i> Choose CSV File
+                </label>
+                <input type="file" id="csvFileInput" accept=".csv" class="file-upload-input">
+                <span id="fileName">No file selected</span>
+            </div>
+        </section>
+
+        <section id="summary-section" class="card hidden">
+            <h2><i class="fas fa-chart-line"></i> Summary Dashboard</h2>
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <h3>Average Lead Time</h3>
+                    <p id="avgLeadTime">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Delay Rate</h3>
+                    <p id="delayRate">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Bullwhip Ratio</h3>
+                    <p id="bullwhipRatio">-</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Variability Index</h3>
+                    <p id="variabilityIndex">-</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="supplier-analysis" class="card hidden">
+            <h2 id="supplier-title"><i class="fas fa-industry"></i> Supplier Analysis</h2>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Lead Time Trends</h3>
+                    <canvas id="leadTimeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Disruption Impact</h3>
+                    <canvas id="disruptionChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Transportation Mode Analysis</h3>
+                    <canvas id="transportChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Bullwhip Effect Visualization</h3>
+                    <canvas id="bullwhipChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="insights-section" class="card hidden">
+            <h2><i class="fas fa-lightbulb"></i> Key Insights</h2>
+            <div class="insights-container">
+                <div class="insight-card">
+                    <h3>Simple Insights</h3>
+                    <ul id="simple-insights">
+                        <li id="highest-lead-time">Highest Average Lead Time: <span>-</span></li>
+                        <li id="lowest-lead-time-transport">Lowest Lead Time Transportation: <span>-</span></li>
+                        <li id="highest-delay-month">Highest Delay Month: <span>-</span></li>
+                        <li id="longest-disruption">Longest Disruption Type: <span>-</span></li>
+                        <li id="shortest-category">Shortest Lead Time Category: <span>-</span></li>
+                    </ul>
+                </div>
+                <div class="insight-card">
+                    <h3>Complex Insights</h3>
+                    <ul id="complex-insights">
+                        <li id="delay-transport">Most Delayed Transportation: <span>-</span></li>
+                        <li id="seasonal-patterns">Seasonal Patterns: <span>-</span></li>
+                        <li id="bullwhip-indicator">Bullwhip Effect Presence: <span>-</span></li>
+                        <li id="variability-correlation">Order Quantity vs Lead Time: <span>-</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="forecast-section" class="card hidden">
+            <h2><i class="fas fa-crystal-ball"></i> Lead Time Forecasting</h2>
+            <div class="forecast-controls">
+                <label for="forecastPeriods">Forecast Periods:</label>
+                <input type="number" id="forecastPeriods" min="1" max="12" value="3">
+                <button id="generateForecast" class="action-btn"><i class="fas fa-magic"></i> Generate Forecast</button>
+            </div>
+            <div class="forecast-results">
+                <div class="chart-card large-chart">
+                    <h3>Lead Time Forecast</h3>
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                <div class="forecast-metrics">
+                    <div class="forecast-metric">
+                        <h4>Expected Future Lead Time</h4>
+                        <p id="futureLeadTime">-</p>
+                    </div>
+                    <div class="forecast-metric">
+                        <h4>Confidence Interval</h4>
+                        <p id="confidenceInterval">-</p>
+                    </div>
+                    <div class="forecast-metric">
+                        <h4>Trend Direction</h4>
+                        <p id="trendDirection">-</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="comparison-section" class="card hidden">
+            <h2><i class="fas fa-balance-scale"></i> Supplier Comparison</h2>
+            <div class="comparison-suppliers" id="comparison-suppliers">
+                <!-- Supplier comparison will be dynamically inserted here -->
+            </div>
+            <div class="charts-container">
+                <div class="chart-card large-chart">
+                    <h3>Lead Time Comparison</h3>
+                    <canvas id="comparisonLeadTimeChart"></canvas>
+                </div>
+                <div class="chart-card large-chart">
+                    <h3>Bullwhip Effect Comparison</h3>
+                    <canvas id="comparisonBullwhipChart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Lead Time Analysis Tool by Nabiev Azamat (2217423)</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
