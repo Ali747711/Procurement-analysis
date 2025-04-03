@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize cursor follower
     initCursorFollower();
+    
+    // Show only the upload section initially
+    showHomePage();
 });
 
 // ======= Cursor Follower =======
@@ -154,14 +157,18 @@ function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    console.log("File selected:", file.name);
+    
     // Use PapaParse to parse CSV
     Papa.parse(file, {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
         complete: function(results) {
+            console.log("CSV parsing complete:", results);
             if (results.data && results.data.length > 0) {
                 procurementData = preprocessData(results.data);
+                console.log("Preprocessed data:", procurementData);
                 
                 // Calculate and display overall metrics
                 calculateOverallMetrics(procurementData);
@@ -172,7 +179,16 @@ function handleFileUpload(event) {
                 // If a supplier was previously selected, analyze it again
                 if (selectedSupplier) {
                     analyzeSupplier(selectedSupplier);
+                } else {
+                    // Default to first supplier
+                    const suppliers = [...new Set(procurementData.map(row => row.Supplier))];
+                    if (suppliers.length > 0) {
+                        analyzeSupplier(suppliers[0]);
+                    }
                 }
+            } else {
+                console.error("No data found in CSV");
+                alert("No valid data found in the CSV file. Please check the format and try again.");
             }
         },
         error: function(error) {
@@ -197,12 +213,22 @@ function preprocessData(data) {
         const expectedDate = new Date(row.Expected_Delivery_Date);
         const actualDate = new Date(row.Actual_Delivery_Date);
         
+        // Validate dates
+        if (isNaN(orderDate) || isNaN(expectedDate) || isNaN(actualDate)) {
+            console.warn("Invalid date found in row:", row);
+            return null;
+        }
+        
         // Calculate lead time (in days)
         const expectedLeadTime = Math.round((expectedDate - orderDate) / (1000 * 60 * 60 * 24));
         const actualLeadTime = Math.round((actualDate - orderDate) / (1000 * 60 * 60 * 24));
         
         // Calculate delay (in days)
         const delay = Math.round((actualDate - expectedDate) / (1000 * 60 * 60 * 24));
+        
+        // Ensure numeric values
+        const customerDemand = parseFloat(row.Customer_Demand) || 0;
+        const orderQuantity = parseFloat(row.Order_Quantity) || 0;
         
         // Add derived fields to the data
         return {
@@ -215,9 +241,11 @@ function preprocessData(data) {
             Delay: delay > 0 ? delay : 0,
             Month: orderDate.getMonth() + 1, // 1-12
             Year: orderDate.getFullYear(),
-            IsDelayed: delay > 0
+            IsDelayed: delay > 0,
+            Customer_Demand: customerDemand,
+            Order_Quantity: orderQuantity
         };
-    });
+    }).filter(row => row !== null); // Remove any rows with invalid dates
 }
 
 // ======= Metrics Calculation =======
@@ -694,10 +722,1012 @@ function generateLeadTimeChart(data) {
             }
         }
     });
+}
 
-// Add this to the end of your app.js file to enable debugging functionality
+function generateDisruptionChart(data) {
+    // Group by disruption type
+    const disruptionData = {};
+    
+    data.forEach(row => {
+        // Handle null or "None" disruptions
+        const disruptionType = row.Disruption_Type || "None";
+        
+        if (!disruptionData[disruptionType]) {
+            disruptionData[disruptionType] = {
+                count: 0,
+                totalDelay: 0
+            };
+        }
+        
+        disruptionData[disruptionType].count++;
+        disruptionData[disruptionType].totalDelay += row.Delay;
+    });
+    
+    // Prepare data for chart
+    const labels = Object.keys(disruptionData);
+    const counts = labels.map(label => disruptionData[label].count);
+    const avgDelays = labels.map(label => 
+        disruptionData[label].count > 0 ? 
+        disruptionData[label].totalDelay / disruptionData[label].count : 0
+    );
+    
+    // Create color array
+    const backgroundColors = [
+        'rgba(74, 111, 165, 0.7)',
+        'rgba(255, 126, 103, 0.7)',
+        'rgba(104, 137, 187, 0.7)',
+        'rgba(255, 180, 162, 0.7)',
+        'rgba(53, 79, 118, 0.7)'
+    ];
+    
+    // Create the chart
+    const ctx = document.getElementById('disruptionChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.disruption) {
+        chartInstances.disruption.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    
+    // Create new chart
+    chartInstances.disruption = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: counts,
+                backgroundColor: backgroundColors.slice(0, labels.length),
+                borderColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: textColor
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const percentage = Math.round((value / data.length) * 100);
+                            const avgDelay = avgDelays[context.dataIndex].toFixed(1);
+                            return `${label}: ${value} (${percentage}%) - Avg Delay: ${avgDelay} days`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generateTransportChart(data) {
+    // Group by transportation mode
+    const transportData = {};
+    
+    data.forEach(row => {
+        if (!transportData[row.Transportation_Mode]) {
+            transportData[row.Transportation_Mode] = {
+                count: 0,
+                totalLeadTime: 0,
+                totalDelay: 0
+            };
+        }
+        
+        transportData[row.Transportation_Mode].count++;
+        transportData[row.Transportation_Mode].totalLeadTime += row.ActualLeadTime;
+        transportData[row.Transportation_Mode].totalDelay += row.Delay;
+    });
+    
+    // Prepare data for chart
+    const labels = Object.keys(transportData);
+    const avgLeadTimes = labels.map(label => 
+        transportData[label].totalLeadTime / transportData[label].count
+    );
+    const avgDelays = labels.map(label => 
+        transportData[label].totalDelay / transportData[label].count
+    );
+    
+    // Create the chart
+    const ctx = document.getElementById('transportChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.transport) {
+        chartInstances.transport.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Create new chart
+    chartInstances.transport = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Average Lead Time (days)',
+                    data: avgLeadTimes,
+                    backgroundColor: 'rgba(74, 111, 165, 0.7)',
+                    borderColor: 'rgba(74, 111, 165, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Average Delay (days)',
+                    data: avgDelays,
+                    backgroundColor: 'rgba(255, 126, 103, 0.7)',
+                    borderColor: 'rgba(255, 126, 103, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function generateBullwhipChart(data) {
+    // Sort data by date
+    data.sort((a, b) => a.OrderDate - b.OrderDate);
+    
+    // Group by month
+    const monthlyData = {};
+    
+    data.forEach(row => {
+        const monthYear = `${row.OrderDate.toLocaleString('default', { month: 'short' })} ${row.Year}`;
+        
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {
+                customerDemand: [],
+                orderQuantity: []
+            };
+        }
+        
+        monthlyData[monthYear].customerDemand.push(row.Customer_Demand);
+        monthlyData[monthYear].orderQuantity.push(row.Order_Quantity);
+    });
+    
+    // Calculate averages and variances
+    const labels = [];
+    const avgDemand = [];
+    const avgOrder = [];
+    const demandVariability = [];
+    const orderVariability = [];
+    
+    Object.entries(monthlyData).forEach(([monthYear, values]) => {
+        labels.push(monthYear);
+        
+        // Calculate averages
+        const avgDemandValue = values.customerDemand.reduce((sum, val) => sum + val, 0) / values.customerDemand.length;
+        const avgOrderValue = values.orderQuantity.reduce((sum, val) => sum + val, 0) / values.orderQuantity.length;
+        
+        avgDemand.push(avgDemandValue);
+        avgOrder.push(avgOrderValue);
+        
+        // Calculate coefficient of variation (CV)
+        const demandCV = calculateCV(values.customerDemand);
+        const orderCV = calculateCV(values.orderQuantity);
+        
+        demandVariability.push(demandCV);
+        orderVariability.push(orderCV);
+    });
+    
+    // Create the chart
+    const ctx = document.getElementById('bullwhipChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.bullwhip) {
+        chartInstances.bullwhip.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Create new chart
+    chartInstances.bullwhip = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Order Quantity Variability',
+                    data: orderVariability,
+                    borderColor: '#ff7e67',
+                    backgroundColor: 'rgba(255, 126, 103, 0.1)',
+                    borderWidth: 2,
+                    yAxisID: 'y',
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Customer Demand Variability',
+                    data: demandVariability,
+                    borderColor: '#4a6fa5',
+                    backgroundColor: 'rgba(74, 111, 165, 0.1)',
+                    borderWidth: 2,
+                    yAxisID: 'y',
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Bullwhip Ratio',
+                    data: orderVariability.map((orderVar, i) => 
+                        demandVariability[i] > 0 ? orderVar / demandVariability[i] : 0
+                    ),
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    yAxisID: 'y1',
+                    tension: 0.3,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.datasetIndex === 2) {
+                                label += context.parsed.y.toFixed(2) + ' (ratio)';
+                            } else {
+                                label += context.parsed.y.toFixed(2);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Variability (CV)',
+                        color: textColor
+                    },
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Bullwhip Ratio',
+                        color: textColor
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function generateForecast() {
+    if (!selectedSupplier || !procurementData.length) return;
+    
+    // Get the number of periods to forecast
+    const periods = parseInt(document.getElementById('forecastPeriods').value) || 3;
+    
+    // Filter data for selected supplier
+    const supplierData = procurementData.filter(row => row.Supplier === selectedSupplier);
+    
+    // Sort data by date
+    supplierData.sort((a, b) => a.OrderDate - b.OrderDate);
+    
+    // Extract lead times by month
+    const monthlyLeadTimes = {};
+    
+    supplierData.forEach(row => {
+        const monthYear = `${row.OrderDate.toLocaleString('default', { month: 'short' })} ${row.Year}`;
+        
+        if (!monthlyLeadTimes[monthYear]) {
+            monthlyLeadTimes[monthYear] = [];
+        }
+        
+        monthlyLeadTimes[monthYear].push(row.ActualLeadTime);
+    });
+    
+    // Calculate average lead time for each month
+    const labels = [];
+    const leadTimeData = [];
+    
+    Object.entries(monthlyLeadTimes).forEach(([monthYear, leadTimes]) => {
+        labels.push(monthYear);
+        const avgLeadTime = leadTimes.reduce((sum, val) => sum + val, 0) / leadTimes.length;
+        leadTimeData.push(avgLeadTime);
+    });
+    
+    // Calculate forecast using simple exponential smoothing
+    const alpha = 0.3; // Smoothing factor
+    let forecast = [];
+    let lastActual = leadTimeData[leadTimeData.length - 1];
+    let lastForecast = lastActual;
+    
+    // Calculate forecast for future periods
+    for (let i = 0; i < periods; i++) {
+        // Simple exponential smoothing formula: Ft+1 = α * Yt + (1 - α) * Ft
+        const nextForecast = alpha * lastActual + (1 - alpha) * lastForecast;
+        forecast.push(nextForecast);
+        lastForecast = nextForecast;
+    }
+    
+    // Calculate confidence interval (simple approach)
+    const stdDev = calculateStandardDeviation(leadTimeData);
+    const confidenceIntervalLower = forecast.map(val => val - 1.96 * stdDev);
+    const confidenceIntervalUpper = forecast.map(val => val + 1.96 * stdDev);
+    
+    // Create future period labels
+    const lastDate = new Date(supplierData[supplierData.length - 1].OrderDate);
+    const futureLabels = [];
+    
+    for (let i = 1; i <= periods; i++) {
+        const futureDate = new Date(lastDate);
+        futureDate.setMonth(lastDate.getMonth() + i);
+        futureLabels.push(futureDate.toLocaleString('default', { month: 'short' }) + ' ' + futureDate.getFullYear());
+    }
+    
+    // Combine historical and forecast data
+    const combinedLabels = [...labels, ...futureLabels];
+    const combinedData = [...leadTimeData, ...forecast];
+    
+    // Determine forecast metrics
+    const futureLT = forecast[forecast.length - 1].toFixed(1);
+    
+    const confidenceInterval = `${confidenceIntervalLower[forecast.length - 1].toFixed(1)} - ${confidenceIntervalUpper[forecast.length - 1].toFixed(1)} days`;
+    
+    // Determine trend direction
+    const trendDirection = forecast[forecast.length - 1] > leadTimeData[leadTimeData.length - 1] ? 
+        "Increasing ↑" : forecast[forecast.length - 1] < leadTimeData[leadTimeData.length - 1] ? 
+        "Decreasing ↓" : "Stable →";
+    
+    // Update forecast metrics
+    document.getElementById('futureLeadTime').textContent = `${futureLT} days`;
+    document.getElementById('confidenceInterval').textContent = confidenceInterval;
+    document.getElementById('trendDirection').textContent = trendDirection;
+    
+    // Create the chart
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.forecast) {
+        chartInstances.forecast.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Create new chart
+    chartInstances.forecast = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: combinedLabels,
+            datasets: [
+                {
+                    label: 'Historical Lead Time',
+                    data: [...leadTimeData, ...Array(periods).fill(null)],
+                    borderColor: '#4a6fa5',
+                    backgroundColor: 'rgba(74, 111, 165, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forecast Lead Time',
+                    data: [...Array(labels.length).fill(null), ...forecast],
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Upper Confidence Interval',
+                    data: [...Array(labels.length).fill(null), ...confidenceIntervalUpper],
+                    borderColor: 'rgba(40, 167, 69, 0.5)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    tension: 0.3,
+                    fill: false
+                },
+                {
+                    label: 'Lower Confidence Interval',
+                    data: [...Array(labels.length).fill(null), ...confidenceIntervalLower],
+                    borderColor: 'rgba(40, 167, 69, 0.5)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    tension: 0.3,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Lead Time (days)',
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+function compareSuppliers() {
+    if (!procurementData.length) {
+        alert("Please upload data first!");
+        return;
+    }
+    
+    // Get unique suppliers
+    const suppliers = [...new Set(procurementData.map(row => row.Supplier))];
+    
+    // Need at least 2 suppliers to compare
+    if (suppliers.length < 2) {
+        alert("Need at least 2 suppliers to compare!");
+        return;
+    }
+    
+    // Randomly select 2 suppliers (or use the selected supplier and one random)
+    let supplier1, supplier2;
+    
+    if (selectedSupplier && suppliers.includes(selectedSupplier)) {
+        supplier1 = selectedSupplier;
+        
+        // Filter out the selected supplier for the second choice
+        const otherSuppliers = suppliers.filter(s => s !== selectedSupplier);
+        supplier2 = otherSuppliers[Math.floor(Math.random() * otherSuppliers.length)];
+    } else {
+        // Randomly pick 2 suppliers
+        supplier1 = suppliers[Math.floor(Math.random() * suppliers.length)];
+        
+        let otherSuppliers = suppliers.filter(s => s !== supplier1);
+        supplier2 = otherSuppliers[Math.floor(Math.random() * otherSuppliers.length)];
+    }
+    
+    comparisonSuppliers = [supplier1, supplier2];
+    
+    // Filter data for selected suppliers
+    const supplier1Data = procurementData.filter(row => row.Supplier === supplier1);
+    const supplier2Data = procurementData.filter(row => row.Supplier === supplier2);
+    
+    // Show comparison page
+    showComparisonPage();
+    
+    // Generate comparison metrics
+    generateComparisonMetrics(supplier1, supplier1Data, supplier2, supplier2Data);
+    
+    // Generate comparison charts
+    generateLeadTimeComparisonChart(supplier1, supplier1Data, supplier2, supplier2Data);
+    generateBullwhipComparisonChart(supplier1, supplier1Data, supplier2, supplier2Data);
+}
+
+function generateComparisonMetrics(supplier1, supplier1Data, supplier2, supplier2Data) {
+    // Calculate metrics for each supplier
+    const supplier1Metrics = calculateSupplierMetrics(supplier1Data);
+    const supplier2Metrics = calculateSupplierMetrics(supplier2Data);
+    
+    // Build HTML for comparison
+    const comparisonHTML = `
+        <div class="comparison-supplier">
+            <h3>${supplier1}</h3>
+            <div class="comparison-metric">
+                <span>Average Lead Time:</span>
+                <span>${supplier1Metrics.avgLeadTime.toFixed(1)} days</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Delay Rate:</span>
+                <span>${supplier1Metrics.delayRate.toFixed(1)}%</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Bullwhip Ratio:</span>
+                <span>${supplier1Metrics.bullwhipRatio.toFixed(2)}</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Variability Index:</span>
+                <span>${supplier1Metrics.variabilityIndex.toFixed(2)}</span>
+            </div>
+        </div>
+        <div class="comparison-supplier">
+            <h3>${supplier2}</h3>
+            <div class="comparison-metric">
+                <span>Average Lead Time:</span>
+                <span>${supplier2Metrics.avgLeadTime.toFixed(1)} days</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Delay Rate:</span>
+                <span>${supplier2Metrics.delayRate.toFixed(1)}%</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Bullwhip Ratio:</span>
+                <span>${supplier2Metrics.bullwhipRatio.toFixed(2)}</span>
+            </div>
+            <div class="comparison-metric">
+                <span>Variability Index:</span>
+                <span>${supplier2Metrics.variabilityIndex.toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+    
+    // Update the UI
+    document.getElementById('comparison-suppliers').innerHTML = comparisonHTML;
+}
+
+function calculateSupplierMetrics(data) {
+    // Calculate average lead time
+    const avgLeadTime = data.reduce((sum, row) => sum + row.ActualLeadTime, 0) / data.length;
+    
+    // Calculate delay rate
+    const delayedOrders = data.filter(row => row.IsDelayed).length;
+    const delayRate = (delayedOrders / data.length) * 100;
+    
+    // Calculate bullwhip ratio
+    const monthlyData = {};
+    
+    // Group by month
+    data.forEach(row => {
+        const monthYear = `${row.Year}-${row.Month}`;
+        
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {
+                customerDemand: [],
+                orderQuantity: []
+            };
+        }
+        
+        monthlyData[monthYear].customerDemand.push(row.Customer_Demand);
+        monthlyData[monthYear].orderQuantity.push(row.Order_Quantity);
+    });
+    
+    // Calculate coefficient of variation for each month
+    const ratios = [];
+    
+    Object.values(monthlyData).forEach(month => {
+        if (month.customerDemand.length > 1 && month.orderQuantity.length > 1) {
+            const demandCV = calculateCV(month.customerDemand);
+            const orderCV = calculateCV(month.orderQuantity);
+            
+            if (demandCV > 0) {
+                ratios.push(orderCV / demandCV);
+            }
+        }
+    });
+    
+    // Average bullwhip ratio
+    const bullwhipRatio = ratios.length > 0 ? 
+        ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length : 0;
+    
+    // Calculate variability index
+    const variabilityIndex = calculateStandardDeviation(data.map(row => row.ActualLeadTime));
+    
+    return {
+        avgLeadTime,
+        delayRate,
+        bullwhipRatio,
+        variabilityIndex
+    };
+}
+
+function generateLeadTimeComparisonChart(supplier1, supplier1Data, supplier2, supplier2Data) {
+    // Sort data by date
+    supplier1Data.sort((a, b) => a.OrderDate - b.OrderDate);
+    supplier2Data.sort((a, b) => a.OrderDate - b.OrderDate);
+    
+    // Group by month
+    const supplier1Monthly = groupByMonth(supplier1Data);
+    const supplier2Monthly = groupByMonth(supplier2Data);
+    
+    // Prepare chart data
+    const allMonths = new Set([...Object.keys(supplier1Monthly), ...Object.keys(supplier2Monthly)]);
+    const sortedMonths = Array.from(allMonths).sort();
+    
+    const supplier1LeadTimes = sortedMonths.map(month => {
+        if (supplier1Monthly[month]) {
+            const avgLeadTime = supplier1Monthly[month].leadTimes.reduce((sum, val) => sum + val, 0) / 
+                              supplier1Monthly[month].leadTimes.length;
+            return avgLeadTime;
+        }
+        return null;
+    });
+    
+    const supplier2LeadTimes = sortedMonths.map(month => {
+        if (supplier2Monthly[month]) {
+            const avgLeadTime = supplier2Monthly[month].leadTimes.reduce((sum, val) => sum + val, 0) / 
+                              supplier2Monthly[month].leadTimes.length;
+            return avgLeadTime;
+        }
+        return null;
+    });
+    
+    // Create the chart
+    const ctx = document.getElementById('comparisonLeadTimeChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.comparisonLeadTime) {
+        chartInstances.comparisonLeadTime.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Create new chart
+    chartInstances.comparisonLeadTime = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: sortedMonths,
+            datasets: [
+                {
+                    label: supplier1,
+                    data: supplier1LeadTimes,
+                    borderColor: '#4a6fa5',
+                    backgroundColor: 'rgba(74, 111, 165, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: supplier2,
+                    data: supplier2LeadTimes,
+                    borderColor: '#ff7e67',
+                    backgroundColor: 'rgba(255, 126, 103, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Lead Time (days)',
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+function groupByMonth(data) {
+    const monthlyData = {};
+    
+    data.forEach(row => {
+        const monthYear = `${row.OrderDate.toLocaleString('default', { month: 'short' })} ${row.Year}`;
+        
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {
+                leadTimes: [],
+                delays: []
+            };
+        }
+        
+        monthlyData[monthYear].leadTimes.push(row.ActualLeadTime);
+        monthlyData[monthYear].delays.push(row.Delay);
+    });
+    
+    return monthlyData;
+}
+
+function generateBullwhipComparisonChart(supplier1, supplier1Data, supplier2, supplier2Data) {
+    // Sort data by date
+    supplier1Data.sort((a, b) => a.OrderDate - b.OrderDate);
+    supplier2Data.sort((a, b) => a.OrderDate - b.OrderDate);
+    
+    // Group data by month
+    const supplier1Monthly = {};
+    const supplier2Monthly = {};
+    
+    supplier1Data.forEach(row => {
+        const monthYear = `${row.OrderDate.toLocaleString('default', { month: 'short' })} ${row.Year}`;
+        
+        if (!supplier1Monthly[monthYear]) {
+            supplier1Monthly[monthYear] = {
+                customerDemand: [],
+                orderQuantity: []
+            };
+        }
+        
+        supplier1Monthly[monthYear].customerDemand.push(row.Customer_Demand);
+        supplier1Monthly[monthYear].orderQuantity.push(row.Order_Quantity);
+    });
+    
+    supplier2Data.forEach(row => {
+        const monthYear = `${row.OrderDate.toLocaleString('default', { month: 'short' })} ${row.Year}`;
+        
+        if (!supplier2Monthly[monthYear]) {
+            supplier2Monthly[monthYear] = {
+                customerDemand: [],
+                orderQuantity: []
+            };
+        }
+        
+        supplier2Monthly[monthYear].customerDemand.push(row.Customer_Demand);
+        supplier2Monthly[monthYear].orderQuantity.push(row.Order_Quantity);
+    });
+    
+    // Calculate bullwhip ratios
+    const allMonths = new Set([...Object.keys(supplier1Monthly), ...Object.keys(supplier2Monthly)]);
+    const sortedMonths = Array.from(allMonths).sort();
+    
+    const supplier1Ratios = sortedMonths.map(month => {
+        if (supplier1Monthly[month] && supplier1Monthly[month].customerDemand.length > 1) {
+            const demandCV = calculateCV(supplier1Monthly[month].customerDemand);
+            const orderCV = calculateCV(supplier1Monthly[month].orderQuantity);
+            
+            return demandCV > 0 ? orderCV / demandCV : null;
+        }
+        return null;
+    });
+    
+    const supplier2Ratios = sortedMonths.map(month => {
+        if (supplier2Monthly[month] && supplier2Monthly[month].customerDemand.length > 1) {
+            const demandCV = calculateCV(supplier2Monthly[month].customerDemand);
+            const orderCV = calculateCV(supplier2Monthly[month].orderQuantity);
+            
+            return demandCV > 0 ? orderCV / demandCV : null;
+        }
+        return null;
+    });
+    
+    // Create the chart
+    const ctx = document.getElementById('comparisonBullwhipChart').getContext('2d');
+    
+    // Destroy previous chart instance if it exists
+    if (chartInstances.comparisonBullwhip) {
+        chartInstances.comparisonBullwhip.destroy();
+    }
+    
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    // Set chart colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Create new chart
+    chartInstances.comparisonBullwhip = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: sortedMonths,
+            datasets: [
+                {
+                    label: supplier1,
+                    data: supplier1Ratios,
+                    borderColor: '#4a6fa5',
+                    backgroundColor: 'rgba(74, 111, 165, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: supplier2,
+                    data: supplier2Ratios,
+                    borderColor: '#ff7e67',
+                    backgroundColor: 'rgba(255, 126, 103, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Bullwhip Threshold',
+                    data: Array(sortedMonths.length).fill(1),
+                    borderColor: '#28a745',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(2);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    },
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Bullwhip Ratio',
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
 // ======= Debug Functions =======
-
 // Enable this to use sample data for testing
 function loadSampleData() {
     // Sample data format matching your CSV structure
@@ -758,6 +1788,7 @@ function loadSampleData() {
     
     // Process the sample data
     procurementData = preprocessData(sampleData);
+    console.log("Sample data loaded:", procurementData);
     
     // Calculate and display overall metrics
     calculateOverallMetrics(procurementData);
@@ -809,7 +1840,7 @@ function addDebugButton() {
 // Call this at the end of your DOMContentLoaded event
 document.addEventListener('DOMContentLoaded', function() {
     // Add debug functionality only in development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
         addDebugButton();
         console.log("Debug mode enabled on localhost");
     }
