@@ -272,13 +272,12 @@ canvas {
     font-size: 0.9rem;
 }
 
-
 /* Theme variables for light/dark mode */
 :root {
     /* Keep your existing variables here */
 }
 
-/* Dark Theme Variables - Add this */
+/* Dark Theme Variables */
 [data-theme="dark"] {
     --primary-color: #3a4cd3;
     --secondary-color: #282f8b;
@@ -294,7 +293,7 @@ canvas {
     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-/* Supplier and Metrics Control Styles - Add this */
+/* Supplier and Metrics Control Styles */
 .controls-container {
     display: flex;
     flex-wrap: wrap;
@@ -374,7 +373,7 @@ canvas {
     transform: translateY(-2px);
 }
 
-/* Theme Toggle Styles - Add this */
+/* Theme Toggle Styles */
 .theme-toggle {
     display: flex;
     align-items: center;
@@ -424,7 +423,7 @@ canvas {
     opacity: 0;
 }
 
-/* Supplier Info - Add this */
+/* Supplier Info */
 .supplier-info {
     background-color: var(--accent-color);
     color: white;
@@ -436,7 +435,7 @@ canvas {
     animation: fadeIn 0.5s ease;
 }
 
-/* Cursor follower styles - Add this */
+/* Cursor follower styles */
 .cursor-follower {
     position: fixed;
     width: 20px;
@@ -489,7 +488,7 @@ canvas {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Additional responsive styles - Add this */
+/* Additional responsive styles */
 @media (max-width: 992px) {
     .controls-container {
         flex-direction: column;
