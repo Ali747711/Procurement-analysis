@@ -34,6 +34,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show only the upload section initially
     showHomePage();
+    
+    // Add debug functionality only in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
+        addDebugButton();
+        console.log("Debug mode enabled on localhost");
+    }
+    
+    // Test file input functionality
+    console.log("Adding file input test");
+    document.getElementById('csvFileInput').addEventListener('change', function() {
+        console.log("Direct file input change event");
+        console.log("File selected via direct event:", this.files[0] ? this.files[0].name : "No file");
+    });
 });
 
 // ======= Cursor Follower =======
@@ -154,21 +167,35 @@ function showComparisonPage() {
 
 // ======= File Upload & Data Processing =======
 function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    console.log("File upload handler triggered");
     
-    console.log("File selected:", file.name);
+    const file = event.target.files[0];
+    console.log("File selected:", file);
+    
+    if (!file) {
+        console.log("No file selected");
+        return;
+    }
+    
+    console.log("File name:", file.name);
+    console.log("File type:", file.type);
+    console.log("File size:", file.size, "bytes");
     
     // Use PapaParse to parse CSV
+    console.log("Starting PapaParse processing");
     Papa.parse(file, {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
         complete: function(results) {
-            console.log("CSV parsing complete:", results);
+            console.log("PapaParse complete");
+            console.log("Data rows:", results.data.length);
+            console.log("First row sample:", results.data[0]);
+            
             if (results.data && results.data.length > 0) {
+                console.log("Processing data...");
                 procurementData = preprocessData(results.data);
-                console.log("Preprocessed data:", procurementData);
+                console.log("Data preprocessed, row count:", procurementData.length);
                 
                 // Calculate and display overall metrics
                 calculateOverallMetrics(procurementData);
@@ -187,7 +214,8 @@ function handleFileUpload(event) {
                     }
                 }
             } else {
-                console.error("No data found in CSV");
+                console.error("No data found in CSV, or data structure is invalid");
+                console.log("Raw results:", results);
                 alert("No valid data found in the CSV file. Please check the format and try again.");
             }
         },
@@ -656,9 +684,9 @@ function generateLeadTimeChart(data) {
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.leadTime = new Chart(ctx, {
@@ -693,7 +721,7 @@ function generateLeadTimeChart(data) {
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -704,18 +732,18 @@ function generateLeadTimeChart(data) {
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true
                 }
@@ -723,7 +751,6 @@ function generateLeadTimeChart(data) {
         }
     });
 }
-
 function generateDisruptionChart(data) {
     // Group by disruption type
     const disruptionData = {};
@@ -769,8 +796,8 @@ function generateDisruptionChart(data) {
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
     
     // Create new chart
     chartInstances.disruption = new Chart(ctx, {
@@ -780,7 +807,7 @@ function generateDisruptionChart(data) {
             datasets: [{
                 data: counts,
                 backgroundColor: backgroundColors.slice(0, labels.length),
-                borderColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+                borderColor: themeIsDarkMode ? '#1e1e1e' : '#ffffff',
                 borderWidth: 1
             }]
         },
@@ -791,7 +818,7 @@ function generateDisruptionChart(data) {
                 legend: {
                     position: 'right',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -846,9 +873,9 @@ function generateTransportChart(data) {
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.transport = new Chart(ctx, {
@@ -879,25 +906,25 @@ function generateTransportChart(data) {
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 }
             },
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true
                 }
@@ -961,9 +988,9 @@ function generateBullwhipChart(data) {
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.bullwhip = new Chart(ctx, {
@@ -1017,7 +1044,7 @@ function generateBullwhipChart(data) {
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -1040,10 +1067,10 @@ function generateBullwhipChart(data) {
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
@@ -1053,13 +1080,13 @@ function generateBullwhipChart(data) {
                     title: {
                         display: true,
                         text: 'Variability (CV)',
-                        color: textColor
+                        color: themeTextColor
                     },
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true
                 },
@@ -1070,14 +1097,14 @@ function generateBullwhipChart(data) {
                     title: {
                         display: true,
                         text: 'Bullwhip Ratio',
-                        color: textColor
+                        color: themeTextColor
                     },
                     grid: {
                         drawOnChartArea: false,
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true
                 }
@@ -1178,9 +1205,9 @@ function generateForecast() {
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.forecast = new Chart(ctx, {
@@ -1236,7 +1263,7 @@ function generateForecast() {
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -1247,24 +1274,24 @@ function generateForecast() {
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Lead Time (days)',
-                        color: textColor
+                        color: themeTextColor
                     }
                 }
             }
@@ -1467,9 +1494,9 @@ function generateLeadTimeComparisonChart(supplier1, supplier1Data, supplier2, su
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.comparisonLeadTime = new Chart(ctx, {
@@ -1504,7 +1531,7 @@ function generateLeadTimeComparisonChart(supplier1, supplier1Data, supplier2, su
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -1515,24 +1542,24 @@ function generateLeadTimeComparisonChart(supplier1, supplier1Data, supplier2, su
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Lead Time (days)',
-                        color: textColor
+                        color: themeTextColor
                     }
                 }
             }
@@ -1630,12 +1657,9 @@ function generateBullwhipComparisonChart(supplier1, supplier1Data, supplier2, su
     }
     
     // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    // Set chart colors based on current theme
-    const isDarkMode = document.body.classList.contains('dark-mode');
-    const textColor = isDarkMode ? '#f8f9fa' : '#343a40';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const themeIsDarkMode = document.body.classList.contains('dark-mode');
+    const themeTextColor = themeIsDarkMode ? '#f8f9fa' : '#343a40';
+    const themeGridColor = themeIsDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     
     // Create new chart
     chartInstances.comparisonBullwhip = new Chart(ctx, {
@@ -1679,7 +1703,7 @@ function generateBullwhipComparisonChart(supplier1, supplier1Data, supplier2, su
                 legend: {
                     position: 'top',
                     labels: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 tooltip: {
@@ -1702,24 +1726,24 @@ function generateBullwhipComparisonChart(supplier1, supplier1Data, supplier2, su
             scales: {
                 x: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     }
                 },
                 y: {
                     grid: {
-                        color: gridColor
+                        color: themeGridColor
                     },
                     ticks: {
-                        color: textColor
+                        color: themeTextColor
                     },
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Bullwhip Ratio',
-                        color: textColor
+                        color: themeTextColor
                     }
                 }
             }
@@ -1836,12 +1860,3 @@ function addDebugButton() {
     `;
     document.head.appendChild(style);
 }
-
-// Call this at the end of your DOMContentLoaded event
-document.addEventListener('DOMContentLoaded', function() {
-    // Add debug functionality only in development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
-        addDebugButton();
-        console.log("Debug mode enabled on localhost");
-    }
-});
