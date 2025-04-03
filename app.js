@@ -694,3 +694,123 @@ function generateLeadTimeChart(data) {
             }
         }
     });
+
+// Add this to the end of your app.js file to enable debugging functionality
+// ======= Debug Functions =======
+
+// Enable this to use sample data for testing
+function loadSampleData() {
+    // Sample data format matching your CSV structure
+    const sampleData = [
+        {
+            "Order_ID": "ORD001",
+            "Supplier": "GammaCorp",
+            "Order_Date": "2024-01-05",
+            "Expected_Delivery_Date": "2024-01-15",
+            "Actual_Delivery_Date": "2024-01-18",
+            "Product_Category": "Electronics",
+            "Transportation_Mode": "Air",
+            "Supplier_Location": "Asia",
+            "Disruption_Type": "Weather",
+            "Customer_Demand": 100,
+            "Order_Quantity": 120
+        },
+        {
+            "Order_ID": "ORD002",
+            "Supplier": "GammaCorp",
+            "Order_Date": "2024-01-12",
+            "Expected_Delivery_Date": "2024-01-22",
+            "Actual_Delivery_Date": "2024-01-25",
+            "Product_Category": "Electronics",
+            "Transportation_Mode": "Air",
+            "Supplier_Location": "Asia",
+            "Disruption_Type": "None",
+            "Customer_Demand": 110,
+            "Order_Quantity": 130
+        },
+        {
+            "Order_ID": "ORD011",
+            "Supplier": "Alpha Supplies",
+            "Order_Date": "2024-01-03",
+            "Expected_Delivery_Date": "2024-01-10",
+            "Actual_Delivery_Date": "2024-01-12",
+            "Product_Category": "Raw Materials",
+            "Transportation_Mode": "Rail",
+            "Supplier_Location": "Europe",
+            "Disruption_Type": "None",
+            "Customer_Demand": 200,
+            "Order_Quantity": 220
+        },
+        {
+            "Order_ID": "ORD021",
+            "Supplier": "BetaTech",
+            "Order_Date": "2024-01-07",
+            "Expected_Delivery_Date": "2024-01-22",
+            "Actual_Delivery_Date": "2024-01-28",
+            "Product_Category": "Machinery",
+            "Transportation_Mode": "Sea",
+            "Supplier_Location": "North America",
+            "Disruption_Type": "Customs",
+            "Customer_Demand": 150,
+            "Order_Quantity": 180
+        }
+    ];
+    
+    // Process the sample data
+    procurementData = preprocessData(sampleData);
+    
+    // Calculate and display overall metrics
+    calculateOverallMetrics(procurementData);
+    
+    // Show analysis page
+    showAnalysisPage();
+    
+    // Analyze the first supplier
+    const firstSupplier = procurementData[0].Supplier;
+    analyzeSupplier(firstSupplier);
+    
+    console.log("Sample data loaded successfully!");
+}
+
+// Add a debug button to the HTML
+function addDebugButton() {
+    const debugButton = document.createElement('button');
+    debugButton.textContent = 'Load Sample Data (Debug)';
+    debugButton.classList.add('debug-button');
+    debugButton.addEventListener('click', loadSampleData);
+    
+    const uploadSection = document.getElementById('upload-section');
+    uploadSection.appendChild(debugButton);
+    
+    // Add debug button styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .debug-button {
+            background-color: #ffcc00;
+            color: #333;
+            border: none;
+            padding: 10px 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            max-width: 250px;
+            font-weight: bold;
+        }
+        
+        .debug-button:hover {
+            background-color: #e6b800;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Call this at the end of your DOMContentLoaded event
+document.addEventListener('DOMContentLoaded', function() {
+    // Add debug functionality only in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        addDebugButton();
+        console.log("Debug mode enabled on localhost");
+    }
+});
